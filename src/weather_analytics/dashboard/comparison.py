@@ -39,13 +39,13 @@ METRICS = {
     'precipitation': {
         'ru': 'Осадки',
         'en': 'Precipitation',
-        'unit': 'мм',
+        'unit': {'ru': 'мм', 'en': 'mm'},
         'chart_type': 'bar',
     },
     'wind_speed_max': {
         'ru': 'Максимальная скорость ветра',
         'en': 'Maximum wind speed',
-        'unit': 'км/ч',
+        'unit': {'ru': 'км/ч', 'en': 'km/h'},
         'chart_type': 'line',
     },
 }
@@ -268,7 +268,14 @@ def show_metric_comparison(
     """Сравнивает выбранный погодный показатель двух городов."""
     settings = METRICS[metric]
     label = settings[language]
-    unit = settings['unit']
+
+    # Выбираем единицу измерения для текущего языка интерфейса.
+    unit_settings = settings['unit']
+    unit = (
+        unit_settings[language]
+        if isinstance(unit_settings, dict)
+        else unit_settings
+    )
 
     first_column = f'{metric}_first'
     second_column = f'{metric}_second'

@@ -358,7 +358,7 @@ def render_history_tab(
     third.metric(
         ui('Всего осадков', 'Total precipitation', language),
         (
-            f'{precipitation_sum:.1f} мм'
+            f'{precipitation_sum:.1f} {ui("мм", "mm", language)}'
             if pd.notna(precipitation_sum)
             else '—'
         ),
@@ -369,7 +369,7 @@ def render_history_tab(
     fourth.metric(
         ui('Максимальный ветер', 'Maximum wind', language),
         (
-            f'{maximum_wind:.1f} км/ч'
+            f'{maximum_wind:.1f} {ui("км/ч", "km/h", language)}'
             if pd.notna(maximum_wind)
             else '—'
         ),
@@ -492,7 +492,7 @@ def render_history_tab(
 
         st.metric(
             ui('Максимальный порыв', 'Maximum gust', language),
-            f'{maximum_gust:.1f} км/ч',
+            f'{maximum_gust:.1f} {ui("км/ч", "km/h", language)}'
         )
 
     # -----------------------------------------------------
