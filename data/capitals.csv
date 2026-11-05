@@ -1,0 +1,252 @@
+country,iso2,capital,latitude,longitude,timezone,territory_type,verification
+Afghanistan,AF,Kabul,34.526011,69.177684,Asia/Kabul,sovereign,source
+Albania,AL,Tirana,41.326873,19.818791,Europe/Tirane,sovereign,source
+Algeria,DZ,Algiers,36.775361,3.060188,Africa/Algiers,sovereign,source
+American Samoa,AS,Pago Pago,-14.275479,-170.70483,Pacific/Pago_Pago,territory,source
+Andorra,AD,Andorra la Vella,42.5063,1.5218,Europe/Andorra,sovereign,added
+Angola,AO,Luanda,-8.82727,13.243951,Africa/Luanda,sovereign,source
+Anguilla,AI,The Valley,41.559572,-98.980548,America/Anguilla,territory,source
+Antigua and Barbuda,AG,Saint John's,47.561701,-52.715149,America/Antigua,sovereign,source
+Argentina,AR,Buenos Aires,-34.607568,-58.437089,America/Argentina/Buenos_Aires,sovereign,needs_review
+Armenia,AM,Yerevan,40.177612,44.512585,Asia/Yerevan,sovereign,source
+Aruba,AW,Oranjestad,12.526874,-70.035684,America/Aruba,territory,source
+Australia,AU,Canberra,-35.2809,149.13,Australia/Sydney,sovereign,corrected
+Austria,AT,Vienna,48.208354,16.372504,Europe/Vienna,sovereign,source
+Azerbaijan,AZ,Baku,40.375443,49.832675,Asia/Baku,sovereign,source
+Bahrain,BH,Manama,26.223504,50.582244,Asia/Bahrain,sovereign,source
+Bangladesh,BD,Dhaka,23.759357,90.378814,Asia/Dhaka,sovereign,source
+Barbados,BB,Bridgetown,13.097783,-59.618418,America/Barbados,sovereign,source
+Belarus,BY,Minsk,53.902334,27.561879,Europe/Minsk,sovereign,source
+Belgium,BE,Brussels,50.846557,4.351697,Europe/Brussels,sovereign,source
+Belize,BZ,Belmopan,17.250199,-88.770018,America/Belize,sovereign,source
+Benin,BJ,Porto-Novo,6.4969,2.6289,Africa/Porto-Novo,sovereign,corrected
+Bermuda,BM,Hamilton,43.25608,-79.872858,Atlantic/Bermuda,territory,source
+Bhutan,BT,Thimphu,27.472762,89.629548,Asia/Thimphu,sovereign,source
+Bolivia,BO,Sucre,-19.0196,-65.2619,America/La_Paz,sovereign,corrected
+Bonaire,BQ,Kralendijk,12.1443,-68.2655,America/Kralendijk,territory,needs_review
+Bosnia and Herzegovina,BA,Sarajevo,43.851977,18.386687,Europe/Sarajevo,sovereign,source
+Botswana,BW,Gaborone,-24.658136,25.908847,Africa/Gaborone,sovereign,source
+Brazil,BR,Brasília,-15.7939,-47.8828,America/Sao_Paulo,sovereign,corrected
+British Indian Ocean Territory,IO,Diego Garcia (settlement),-7.3195,72.4229,Indian/Chagos,territory,needs_review
+British Virgin Islands,VG,Road Town,18.4167,-64.6167,America/Tortola,territory,needs_review
+Brunei,BN,Bandar Seri Begawan,4.889545,114.941757,Asia/Brunei,sovereign,source
+Bulgaria,BG,Sofia,-15.25384,48.256216,Europe/Sofia,sovereign,source
+Burkina Faso,BF,Ouagadougou,12.368187,-1.527094,Africa/Ouagadougou,sovereign,source
+Burundi,BI,Gitega,-3.4264,29.9308,Africa/Bujumbura,sovereign,corrected
+Cambodia,KH,Phnom Penh,11.568271,104.922443,Asia/Phnom_Penh,sovereign,source
+Cameroon,CM,Yaoundé,3.868987,11.521334,Africa/Douala,sovereign,source
+Canada,CA,Ottawa,45.4215,-75.6972,America/Toronto,sovereign,corrected
+Cape Verde,CV,Praia,14.916017,-23.509613,Atlantic/Cape_Verde,sovereign,source
+Cayman Islands,KY,George Town,5.414568,100.329804,America/Cayman,territory,source
+Central African Republic,CF,Bangui,4.390715,18.550913,Africa/Bangui,sovereign,source
+Chad,TD,N'Djamena,12.119154,15.050276,Africa/Ndjamena,sovereign,source
+Chile,CL,Santiago,-33.4489,-70.6693,America/Santiago,sovereign,corrected
+China,CN,Beijing,39.906217,116.391276,Asia/Shanghai,sovereign,needs_review
+Christmas Island,CX,Flying Fish Cove,-10.426665,105.668672,Indian/Christmas,territory,source
+Cocos (Keeling) Islands,CC,West Island,-12.1889,96.8297,Indian/Cocos,territory,corrected
+Colombia,CO,Bogotá,4.59808,-74.076044,America/Bogota,sovereign,source
+Comoros,KM,Moroni,-11.693126,43.254304,Indian/Comoro,sovereign,source
+Cook Islands,CK,Avarua,-21.207474,-159.770814,Pacific/Rarotonga,territory,source
+Costa Rica,CR,San José,9.932543,-84.079578,America/Costa_Rica,sovereign,source
+Croatia,HR,Zagreb,45.813177,15.977048,Europe/Zagreb,sovereign,source
+Cuba,CU,Havana,23.135305,-82.358963,America/Havana,sovereign,source
+Curaçao,CW,Willemstad,12.1224,-68.8824,America/Curacao,territory,added
+Cyprus,CY,Nicosia,35.17393,33.364726,Asia/Nicosia,sovereign,needs_review
+Czech Republic,CZ,Prague,50.087465,14.421254,Europe/Prague,sovereign,source
+Democratic Republic of the Congo,CD,Kinshasa,-4.321706,15.312597,Africa/Kinshasa,sovereign,needs_review
+Denmark,DK,Copenhagen,55.686724,12.570072,Europe/Copenhagen,sovereign,source
+Djibouti,DJ,Djibouti,11.814597,42.845306,Africa/Djibouti,sovereign,source
+Dominica,DM,Roseau,48.771037,-95.769788,America/Dominica,sovereign,source
+Dominican Republic,DO,Santo Domingo,18.480197,-69.942111,America/Santo_Domingo,sovereign,source
+East Timor,TL,Dili,28.651718,77.221939,Asia/Dili,sovereign,source
+Ecuador,EC,Quito,-0.220164,-78.512327,America/Guayaquil,sovereign,needs_review
+Egypt,EG,Cairo,30.048819,31.243666,Africa/Cairo,sovereign,source
+El Salvador,SV,San Salvador,13.698994,-89.191425,America/El_Salvador,sovereign,source
+Equatorial Guinea,GQ,Ciudad de la Paz,1.5833,10.4667,Africa/Malabo,sovereign,corrected
+Eritrea,ER,Asmara,15.338967,38.932676,Africa/Asmara,sovereign,source
+Estonia,EE,Tallinn,59.437216,24.745369,Europe/Tallinn,sovereign,source
+Eswatini,SZ,Mbabane,-26.3054,31.1367,Africa/Mbabane,sovereign,corrected
+Ethiopia,ET,Addis Ababa,9.010793,38.761252,Africa/Addis_Ababa,sovereign,source
+Falkland Islands,FK,Stanley,-51.695058,-57.849169,Atlantic/Stanley,territory,source
+Faroe Islands,FO,Tórshavn,62.012,-6.768,Atlantic/Faroe,territory,source
+Federated States of Micronesia,FM,Palikir,6.920744,158.162714,Pacific/Chuuk,sovereign,needs_review
+Fiji,FJ,Suva,-18.141588,178.442166,Pacific/Fiji,sovereign,source
+Finland,FI,Helsinki,60.16741,24.942577,Europe/Helsinki,sovereign,source
+France,FR,Paris,48.856697,2.351462,Europe/Paris,sovereign,source
+French Guiana,GF,Cayenne,4.937114,-52.325831,America/Cayenne,territory,source
+French Polynesia,PF,Papeete,-17.5516,-149.5585,Pacific/Tahiti,territory,corrected
+French Southern and Antarctic Lands,TF,Port-aux-Français (administrative base),-49.35,70.2167,Indian/Kerguelen,territory,needs_review
+Gabon,GA,Libreville,0.390002,9.454001,Africa/Libreville,sovereign,source
+Georgia,GE,Tbilisi,41.693459,44.80145,Asia/Tbilisi,sovereign,source
+Germany,DE,Berlin,52.517036,13.38886,Europe/Berlin,sovereign,needs_review
+Ghana,GH,Accra,5.560014,-0.205744,Africa/Accra,sovereign,source
+Gibraltar,GI,Gibraltar,36.140807,-5.35413,Europe/Gibraltar,territory,source
+Greece,GR,Athens,37.983941,23.728305,Europe/Athens,sovereign,source
+Greenland,GL,Nuuk,64.1835,-51.7216,America/Nuuk,territory,corrected
+Grenada,GD,St. George's,48.658138,6.928099,America/Grenada,sovereign,source
+Guadeloupe,GP,Basse-Terre,16.000078,-61.733337,America/Guadeloupe,territory,source
+Guam,GU,Hagåtña,13.472745,144.752018,Pacific/Guam,territory,source
+Guatemala,GT,Guatemala City,14.622233,-90.518519,America/Guatemala,sovereign,source
+Guernsey,GG,St. Peter Port,49.456814,-2.538998,Europe/Guernsey,territory,source
+Guinea,GN,Conakry,9.51706,-13.699843,Africa/Conakry,sovereign,source
+Guinea-Bissau,GW,Bissau,11.861324,-15.583055,Africa/Bissau,sovereign,source
+Guyana,GY,Georgetown,6.802577,-58.162861,America/Guyana,sovereign,source
+Haiti,HT,Port-au-Prince,18.547327,-72.339593,America/Port-au-Prince,sovereign,source
+Honduras,HN,Tegucigalpa,14.105686,-87.204676,America/Tegucigalpa,sovereign,source
+Hong Kong,HK,Hong Kong,22.3193,114.1694,Asia/Hong_Kong,territory,corrected
+Hungary,HU,Budapest,47.498382,19.040471,Europe/Budapest,sovereign,source
+Iceland,IS,Reykjavik,64.145981,-21.942237,Atlantic/Reykjavik,sovereign,source
+India,IN,New Delhi,28.614179,77.202266,Asia/Kolkata,sovereign,source
+Indonesia,ID,Jakarta,-6.2088,106.8456,Asia/Jakarta,sovereign,corrected
+Iran,IR,Tehran,35.700618,51.401378,Asia/Tehran,sovereign,source
+Iraq,IQ,Baghdad,33.302431,44.378799,Asia/Baghdad,sovereign,source
+Ireland,IE,Dublin,53.349764,-6.260273,Europe/Dublin,sovereign,source
+Isle of Man,IM,Douglas,39.762842,-88.217052,Europe/Isle_of_Man,territory,source
+Israel,IL,Jerusalem,31.7683,35.2137,Asia/Jerusalem,sovereign,corrected
+Italy,IT,Rome,41.89332,12.482932,Europe/Rome,sovereign,source
+Ivory Coast,CI,Yamoussoukro,6.8276,-5.2893,Africa/Abidjan,sovereign,corrected
+Jamaica,JM,Kingston,17.971215,-76.792813,America/Jamaica,sovereign,source
+Japan,JP,Tokyo,35.682839,139.759455,Asia/Tokyo,sovereign,source
+Jersey,JE,Saint Helier,47.384387,4.683325,Europe/Jersey,territory,source
+Jordan,JO,Amman,31.951569,35.923962,Asia/Amman,sovereign,source
+Kazakhstan,KZ,Astana,51.1694,71.4491,Asia/Almaty,sovereign,corrected
+Kenya,KE,Nairobi,-1.283253,36.817245,Africa/Nairobi,sovereign,source
+Kiribati,KI,South Tarawa,1.349078,173.038651,Pacific/Tarawa,sovereign,needs_review
+Kosovo,XK,Pristina,42.6629,21.1655,Europe/Belgrade,special_status,needs_review
+Kuwait,KW,Kuwait City,29.379709,47.973563,Asia/Kuwait,sovereign,source
+Kyrgyzstan,KG,Bishkek,42.876562,74.607008,Asia/Bishkek,sovereign,source
+Laos,LA,Vientiane,17.964099,102.613371,Asia/Vientiane,sovereign,source
+Latvia,LV,Riga,56.949398,24.105185,Europe/Riga,sovereign,source
+Lebanon,LB,Beirut,33.89592,35.47843,Asia/Beirut,sovereign,source
+Lesotho,LS,Maseru,-29.310054,27.478222,Africa/Maseru,sovereign,source
+Liberia,LR,Monrovia,6.328034,-10.797788,Africa/Monrovia,sovereign,source
+Libya,LY,Tripoli,32.896672,13.177792,Africa/Tripoli,sovereign,source
+Liechtenstein,LI,Vaduz,47.139286,9.522796,Europe/Vaduz,sovereign,source
+Lithuania,LT,Vilnius,54.687046,25.282911,Europe/Vilnius,sovereign,source
+Luxembourg,LU,Luxembourg,49.815868,6.129675,Europe/Luxembourg,sovereign,source
+Macau,MO,Macau,22.1987,113.5439,Asia/Macau,territory,corrected
+Madagascar,MG,Antananarivo,-18.910012,47.525581,Indian/Antananarivo,sovereign,source
+Malawi,MW,Lilongwe,-13.987511,33.768144,Africa/Blantyre,sovereign,source
+Malaysia,MY,Kuala Lumpur,3.139,101.6869,Asia/Kuala_Lumpur,sovereign,corrected
+Maldives,MV,Malé,16.370036,-2.290024,Indian/Maldives,sovereign,source
+Mali,ML,Bamako,12.605033,-7.986514,Africa/Bamako,sovereign,source
+Malta,MT,Valletta,35.898982,14.513676,Europe/Malta,sovereign,source
+Marshall Islands,MH,Majuro,7.090992,171.381635,Pacific/Majuro,sovereign,needs_review
+Martinique,MQ,Fort-de-France,14.602796,-61.067672,America/Martinique,territory,source
+Mauritania,MR,Nouakchott,18.079238,-15.978007,Africa/Nouakchott,sovereign,source
+Mauritius,MU,Port Louis,-20.163728,57.504533,Indian/Mauritius,sovereign,source
+Mayotte,YT,Mamoudzou,-12.780586,45.227991,Indian/Mayotte,territory,source
+Mexico,MX,Mexico City,19.43263,-99.133178,America/Mexico_City,sovereign,needs_review
+Moldova,MD,Chișinău,47.024471,28.832253,Europe/Chisinau,sovereign,source
+Monaco,MC,Monaco,43.732349,7.427683,Europe/Monaco,sovereign,source
+Mongolia,MN,Ulaanbaatar,47.918468,106.917702,Asia/Ulaanbaatar,sovereign,corrected
+Montenegro,ME,Podgorica,42.4304,19.2594,Europe/Podgorica,sovereign,needs_review
+Montserrat,MS,Brades,16.7928,-62.2106,America/Montserrat,territory,needs_review
+Morocco,MA,Rabat,34.022405,-6.834543,Africa/Casablanca,sovereign,source
+Mozambique,MZ,Maputo,-25.966213,32.56745,Africa/Maputo,sovereign,source
+Myanmar,MM,Naypyidaw,19.7633,96.0785,Asia/Yangon,sovereign,needs_review
+Namibia,NA,Windhoek,-22.574392,17.079069,Africa/Windhoek,sovereign,source
+Nauru,NR,Yaren,-0.5477,166.9209,Pacific/Nauru,sovereign,corrected
+Nepal,NP,Kathmandu,27.708317,85.320582,Asia/Kathmandu,sovereign,source
+Netherlands,NL,Amsterdam,52.3676,4.9041,Europe/Amsterdam,sovereign,corrected
+New Caledonia,NC,Nouméa,-22.2711,166.4416,Pacific/Noumea,territory,corrected
+New Zealand,NZ,Wellington,-41.288795,174.777211,Pacific/Auckland,sovereign,needs_review
+Nicaragua,NI,Managua,12.145991,-86.274666,America/Managua,sovereign,source
+Niger,NE,Niamey,13.524834,2.109823,Africa/Niamey,sovereign,source
+Nigeria,NG,Abuja,9.06433,7.489297,Africa/Lagos,sovereign,source
+Niue,NU,Alofi,-19.053416,-169.919199,Pacific/Niue,territory,source
+Norfolk Island,NF,Kingston,-29.0546,167.9663,Pacific/Norfolk,territory,corrected
+North Korea,KP,Pyongyang,39.019474,125.753388,Asia/Pyongyang,sovereign,source
+North Macedonia,MK,Skopje,41.996092,21.43165,Europe/Skopje,sovereign,corrected
+Northern Mariana Islands,MP,Saipan,15.190983,145.746853,Pacific/Saipan,territory,source
+Norway,NO,Oslo,59.91333,10.73897,Europe/Oslo,sovereign,source
+Oman,OM,Muscat,23.599786,58.54513,Asia/Muscat,sovereign,source
+Pakistan,PK,Islamabad,33.693812,73.065151,Asia/Karachi,sovereign,source
+Palau,PW,Ngerulmud,7.5004,134.6243,Pacific/Palau,sovereign,corrected
+Palestine,PS,Ramallah (administrative center),31.9038,35.2034,Asia/Hebron,special_status,needs_review
+Panama,PA,Panama City,8.971449,-79.53418,America/Panama,sovereign,source
+Papua New Guinea,PG,Port Moresby,-9.47433,147.15995,Pacific/Port_Moresby,sovereign,needs_review
+Paraguay,PY,Asunción,-25.280046,-57.634381,America/Asuncion,sovereign,source
+Peru,PE,Lima,-12.062106,-77.036526,America/Lima,sovereign,source
+Philippines,PH,Manila,14.590622,120.97997,Asia/Manila,sovereign,source
+Pitcairn Islands,PN,Adamstown,-25.0667,-130.1,Pacific/Pitcairn,territory,corrected
+Poland,PL,Warsaw,52.233717,21.071411,Europe/Warsaw,sovereign,source
+Portugal,PT,Lisbon,38.707751,-9.136592,Europe/Lisbon,sovereign,needs_review
+Puerto Rico,PR,San Juan,18.465299,-66.116666,America/Puerto_Rico,territory,source
+Qatar,QA,Doha,25.285633,51.526416,Asia/Qatar,sovereign,source
+Republic of the Congo,CG,Brazzaville,-4.269441,15.271226,Africa/Brazzaville,sovereign,source
+Romania,RO,Bucharest,44.436141,26.10272,Europe/Bucharest,sovereign,source
+Russia,RU,Moscow,55.7558,37.6173,Europe/Moscow,sovereign,corrected
+Rwanda,RW,Kigali,-1.88596,30.129675,Africa/Kigali,sovereign,source
+Réunion,RE,Saint-Denis,-20.8823,55.4504,Indian/Reunion,territory,corrected
+Saba,BQ-SA,The Bottom,17.6261,-63.2492,America/Kralendijk,territory,needs_review
+Saint Barthélemy,BL,Gustavia,17.8962,-62.8498,America/St_Barthelemy,territory,added
+Saint Helena,SH,Jamestown,-15.9244,-5.7181,Atlantic/St_Helena,territory,corrected
+Saint Kitts and Nevis,KN,Basseterre,17.296092,-62.722301,America/St_Kitts,sovereign,source
+Saint Lucia,LC,Castries,13.952589,-60.987824,America/St_Lucia,sovereign,source
+Saint Martin (French part),MF,Marigot,18.0675,-63.0825,America/Marigot,territory,added
+Saint Pierre and Miquelon,PM,Saint-Pierre,48.383272,7.471873,America/Miquelon,territory,source
+Saint Vincent and the Grenadines,VC,Kingstown,13.156186,-61.227962,America/St_Vincent,sovereign,source
+Samoa,WS,Apia,-13.834369,-171.769279,Pacific/Apia,sovereign,source
+San Marino,SM,City of San Marino,43.9364,12.446699,Europe/San_Marino,sovereign,source
+Saudi Arabia,SA,Riyadh,24.631969,46.715065,Asia/Riyadh,sovereign,source
+Senegal,SN,Dakar,14.693425,-17.447938,Africa/Dakar,sovereign,source
+Serbia,RS,Belgrade,44.817813,20.456897,Europe/Belgrade,sovereign,source
+Seychelles,SC,Victoria,-36.59861,144.678005,Indian/Mahe,sovereign,source
+Sierra Leone,SL,Freetown,8.479004,-13.26795,Africa/Freetown,sovereign,source
+Singapore,SG,Singapore,1.357107,103.819499,Asia/Singapore,sovereign,source
+Sint Eustatius,BQ-SE,Oranjestad,17.4824,-62.9832,America/Kralendijk,territory,needs_review
+Sint Maarten (Dutch part),SX,Philipsburg,18.026,-63.0458,America/Lower_Princes,territory,added
+Slovakia,SK,Bratislava,48.151699,17.109306,Europe/Bratislava,sovereign,source
+Slovenia,SI,Ljubljana,46.04998,14.50686,Europe/Ljubljana,sovereign,source
+Solomon Islands,SB,Honiara,-9.431077,159.955255,Pacific/Guadalcanal,sovereign,source
+Somalia,SO,Mogadishu,2.042778,45.338564,Africa/Mogadishu,sovereign,source
+South Africa,ZA,Pretoria,-25.7479,28.2293,Africa/Johannesburg,sovereign,corrected
+South Georgia,GS,King Edward Point (administrative base),-54.2833,-36.5,Atlantic/South_Georgia,territory,needs_review
+South Korea,KR,Seoul,37.566679,126.978291,Asia/Seoul,sovereign,source
+South Sudan,SS,Juba,4.847202,31.595166,Africa/Juba,sovereign,source
+Spain,ES,Madrid,40.416705,-3.703582,Europe/Madrid,sovereign,needs_review
+Sri Lanka,LK,Sri Jayawardenepura Kotte,6.8941,79.9025,Asia/Colombo,sovereign,corrected
+Sudan,SD,Khartoum,15.593325,32.53565,Africa/Khartoum,sovereign,source
+Suriname,SR,Paramaribo,5.821609,-55.177043,America/Paramaribo,sovereign,source
+Svalbard and Jan Mayen,SJ,Longyearbyen (Svalbard),78.2232,15.6469,Arctic/Longyearbyen,territory,needs_review
+Sweden,SE,Stockholm,59.325117,18.071094,Europe/Stockholm,sovereign,source
+Switzerland,CH,Bern,46.948271,7.451451,Europe/Zurich,sovereign,source
+Syria,SY,Damascus,33.51307,36.309581,Asia/Damascus,sovereign,source
+São Tomé and Príncipe,ST,São Tomé,0.338924,6.731303,Africa/Sao_Tome,sovereign,source
+Taiwan,TW,Taipei,25.03752,121.56368,Asia/Taipei,territory,source
+Tajikistan,TJ,Dushanbe,38.542584,68.815214,Asia/Dushanbe,sovereign,source
+Tanzania,TZ,Dodoma,-6.163,35.7516,Africa/Dar_es_Salaam,sovereign,corrected
+Thailand,TH,Bangkok,13.754253,100.493087,Asia/Bangkok,sovereign,source
+The Bahamas,BS,Nassau,25.078346,-77.338333,America/Nassau,sovereign,source
+The Gambia,GM,Banjul,13.441346,-16.562471,Africa/Banjul,sovereign,source
+Togo,TG,Lomé,6.130419,1.215829,Africa/Lome,sovereign,source
+Tokelau,TK,Fakaofo (representative atoll),-9.3653,-171.215,Pacific/Fakaofo,territory,needs_review
+Tonga,TO,Nuku'alofa,-21.13434,-175.201808,Pacific/Tongatapu,sovereign,source
+Trinidad and Tobago,TT,Port of Spain,10.657268,-61.518017,America/Port_of_Spain,sovereign,source
+Tunisia,TN,Tunis,33.843941,9.400138,Africa/Tunis,sovereign,source
+Turkey,TR,Ankara,39.920777,32.854067,Europe/Istanbul,sovereign,source
+Turkmenistan,TM,Ashgabat,37.939668,58.387426,Asia/Ashgabat,sovereign,source
+Turks and Caicos Islands,TC,Cockburn Town,21.4612,-71.1419,America/Grand_Turk,territory,needs_review
+Tuvalu,TV,Funafuti,-8.534995,179.11865,Pacific/Funafuti,sovereign,source
+Uganda,UG,Kampala,0.317714,32.581354,Africa/Kampala,sovereign,source
+Ukraine,UA,Kyiv,50.450034,30.524136,Europe/Kyiv,sovereign,corrected
+United Arab Emirates,AE,Abu Dhabi,24.4539,54.3773,Asia/Dubai,sovereign,corrected
+United Kingdom,GB,London,51.507322,-0.127647,Europe/London,sovereign,source
+United States,US,"Washington, D.C.",38.9072,-77.0369,America/New_York,sovereign,corrected
+United States Minor Outlying Islands,UM,Midway Atoll (representative location),28.2072,-177.3735,Pacific/Midway,territory,needs_review
+United States Virgin Islands,VI,Charlotte Amalie,18.3419,-64.9307,America/St_Thomas,territory,needs_review
+Uruguay,UY,Montevideo,-34.905904,-56.191357,America/Montevideo,sovereign,source
+Uzbekistan,UZ,Tashkent,41.312336,69.278708,Asia/Tashkent,sovereign,corrected
+Vanuatu,VU,Port Vila,-17.741497,168.315016,Pacific/Efate,sovereign,source
+Vatican City,VA,Vatican City,41.9029,12.4534,Europe/Vatican,sovereign,added
+Venezuela,VE,Caracas,10.506098,-66.914602,America/Caracas,sovereign,source
+Vietnam,VN,Hanoi,21.02945,105.854444,Asia/Ho_Chi_Minh,sovereign,source
+Wales,GB-WLS,Cardiff,51.4816,-3.1791,Europe/London,territory,corrected
+Wallis and Futuna,WF,Mata-Utu,-13.282042,-176.174022,Pacific/Wallis,territory,source
+Western Sahara,EH,Laayoune (administrative center),27.1536,-13.2033,Africa/El_Aaiun,territory,needs_review
+Yemen,YE,Sana'a,15.353857,44.205884,Asia/Aden,sovereign,source
+Zambia,ZM,Lusaka,-15.416449,28.282154,Africa/Lusaka,sovereign,source
+Zimbabwe,ZW,Harare,-17.831773,31.045686,Africa/Harare,sovereign,source
+Åland Islands,AX,Mariehamn,60.0973,19.9348,Europe/Mariehamn,territory,added
+United Arab Emirates,AE,Dubai,25.2048,55.2708,Asia/Dubai,non-capital,manually_added
