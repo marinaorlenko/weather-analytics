@@ -24,12 +24,12 @@ def get_connection() -> psycopg.Connection:
 @st.cache_data(ttl=300)
 def load_cities() -> pd.DataFrame:
     """Загружает список городов и их часовых поясов."""
-    query = '''
+    query = """
         SELECT city_id, name, country, timezone
         FROM cities
         WHERE is_active = TRUE
         ORDER BY name, country
-    '''
+    """
 
     with get_connection() as connection:
         with connection.cursor() as cursor:
@@ -45,7 +45,7 @@ def load_cities() -> pd.DataFrame:
 @st.cache_data(ttl=300)
 def load_historical_daily(city_id: int) -> pd.DataFrame:
     """Загружает ежедневные исторические наблюдения."""
-    query = '''
+    query = """
         SELECT
             weather_date,
             temperature_min,
@@ -58,7 +58,7 @@ def load_historical_daily(city_id: int) -> pd.DataFrame:
         FROM historical_daily
         WHERE city_id = %s
         ORDER BY weather_date
-    '''
+    """
 
     with get_connection() as connection:
         with connection.cursor() as cursor:
@@ -80,9 +80,7 @@ def load_historical_daily(city_id: int) -> pd.DataFrame:
     )
 
     if not dataframe.empty:
-        dataframe['weather_date'] = pd.to_datetime(
-            dataframe['weather_date']
-        )
+        dataframe['weather_date'] = pd.to_datetime(dataframe['weather_date'])
 
     return dataframe
 
@@ -95,7 +93,7 @@ def load_historical_hourly(
     timezone: str,
 ) -> pd.DataFrame:
     """Загружает почасовую историю по местным датам города."""
-    query = '''
+    query = """
         SELECT
             weather_time,
             temperature,
@@ -105,7 +103,7 @@ def load_historical_hourly(
           AND (weather_time AT TIME ZONE %s)::date
               BETWEEN %s::date AND %s::date
         ORDER BY weather_time
-    '''
+    """
 
     with get_connection() as connection:
         with connection.cursor() as cursor:
@@ -132,7 +130,7 @@ def load_historical_hourly(
 @st.cache_data(ttl=300)
 def load_forecast_daily(city_id: int) -> pd.DataFrame:
     """Загружает последнюю сохранённую версию прогноза по дням."""
-    query = '''
+    query = """
         SELECT
             forecast_date,
             temperature_min,
@@ -148,7 +146,7 @@ def load_forecast_daily(city_id: int) -> pd.DataFrame:
               WHERE city_id = %s
           )
         ORDER BY forecast_date
-    '''
+    """
 
     with get_connection() as connection:
         with connection.cursor() as cursor:
@@ -168,9 +166,7 @@ def load_forecast_daily(city_id: int) -> pd.DataFrame:
     )
 
     if not dataframe.empty:
-        dataframe['forecast_date'] = pd.to_datetime(
-            dataframe['forecast_date']
-        )
+        dataframe['forecast_date'] = pd.to_datetime(dataframe['forecast_date'])
         dataframe['fetched_at'] = pd.to_datetime(
             dataframe['fetched_at'],
             utc=True,
@@ -185,7 +181,7 @@ def load_forecast_hourly(
     fetched_at: pd.Timestamp,
 ) -> pd.DataFrame:
     """Загружает почасовой прогноз из той же версии, что и дневной."""
-    query = '''
+    query = """
         SELECT
             forecast_time,
             temperature,
@@ -194,7 +190,7 @@ def load_forecast_hourly(
         WHERE city_id = %s
           AND fetched_at = %s
         ORDER BY forecast_time
-    '''
+    """
 
     with get_connection() as connection:
         with connection.cursor() as cursor:
@@ -224,7 +220,7 @@ def load_historical_daily_averages(
     timezone: str,
 ) -> pd.DataFrame:
     """Вычисляет среднюю температуру по часам за местные сутки города."""
-    query = '''
+    query = """
         SELECT
             (weather_time AT TIME ZONE %s)::date AS weather_date,
             AVG(temperature) AS average_temperature,
@@ -234,7 +230,7 @@ def load_historical_daily_averages(
         WHERE city_id = %s
         GROUP BY 1
         ORDER BY 1
-    '''
+    """
 
     with get_connection() as connection:
         with connection.cursor() as cursor:
@@ -255,7 +251,7 @@ def load_forecast_daily_averages(
     fetched_at: pd.Timestamp,
 ) -> pd.DataFrame:
     """Вычисляет суточные средние по последней версии почасового прогноза."""
-    query = '''
+    query = """
         SELECT
             (forecast_time AT TIME ZONE %s)::date AS forecast_date,
             AVG(temperature) AS average_temperature,
@@ -265,7 +261,7 @@ def load_forecast_daily_averages(
         WHERE city_id = %s AND fetched_at = %s
         GROUP BY 1
         ORDER BY 1
-    '''
+    """
 
     with get_connection() as connection:
         with connection.cursor() as cursor:
@@ -316,24 +312,19 @@ def prepare_complete_daily_averages(
         ambiguous='NaT',
         nonexistent='shift_forward',
     )
-    next_midnight = (
-        dataframe[date_column] + pd.Timedelta(days=1)
-    ).dt.tz_localize(
+    next_midnight = (dataframe[date_column] + pd.Timedelta(days=1)).dt.tz_localize(
         timezone,
         ambiguous='NaT',
         nonexistent='shift_forward',
     )
 
-    expected_hours = (
-        (next_midnight - local_midnight).dt.total_seconds() / 3600
-    )
+    expected_hours = (next_midnight - local_midnight).dt.total_seconds() / 3600
 
     # Среднее рассчитываем только для суток, где присутствуют
     # все ожидаемые почасовые значения температуры.
-    complete = (
-        dataframe['hour_count'].eq(expected_hours)
-        & dataframe['temperature_count'].eq(expected_hours)
-    )
+    complete = dataframe['hour_count'].eq(expected_hours) & dataframe[
+        'temperature_count'
+    ].eq(expected_hours)
 
     return dataframe.loc[
         complete,
@@ -413,26 +404,33 @@ def load_extra_metrics(
 
 @st.cache_data(ttl=300)
 def load_forecast_hourly_details(
-    city_id: int, 
+    city_id: int,
     fetched_at: pd.Timestamp,
 ) -> pd.DataFrame:
     """Загружает почасовые показатели без зависимости от необязательных полей."""
     fields = (
-        'temperature', 'apparent_temperature', 'humidity',
-        'precipitation_probability', 'uv_index', 'wind_speed', 'wind_gusts',
-        'dew_point', 'cloud_cover', 'pressure_msl', 'visibility',
+        'temperature',
+        'apparent_temperature',
+        'humidity',
+        'precipitation_probability',
+        'uv_index',
+        'wind_speed',
+        'wind_gusts',
+        'dew_point',
+        'cloud_cover',
+        'pressure_msl',
+        'visibility',
     )
     # Необязательные поля читаем из JSON-представления строки.
     expressions = ', '.join(
-        f"(to_jsonb(t)->>'{field}')::double precision AS {field}"
-        for field in fields
+        f"(to_jsonb(t)->>'{field}')::double precision AS {field}" for field in fields
     )
-    query = f'''
+    query = f"""
         SELECT t.forecast_time, {expressions}
         FROM forecast_hourly AS t
         WHERE t.city_id = %s AND t.fetched_at = %s
         ORDER BY t.forecast_time
-    '''
+    """
     with get_connection() as connection:
         with connection.cursor() as cursor:
             cursor.execute(query, (city_id, fetched_at.to_pydatetime()))
@@ -447,10 +445,11 @@ def load_forecast_hourly_details(
 
 @st.cache_data(ttl=300)
 def load_forecast_precipitation_events(
-    city_id: int, fetched_at: pd.Timestamp,
+    city_id: int,
+    fetched_at: pd.Timestamp,
 ) -> pd.DataFrame:
     """Возвращает только часы с ненулевыми осадками и сопутствующим кодом ECMWF."""
-    query = '''
+    query = """
         SELECT h.forecast_time, h.precipitation, h.rain, h.showers,
                h.snowfall, e.precipitation_type
         FROM forecast_hourly AS h
@@ -464,10 +463,14 @@ def load_forecast_precipitation_events(
             OR COALESCE(h.showers, 0) > 0
             OR COALESCE(h.snowfall, 0) > 0)
         ORDER BY h.forecast_time
-    '''
+    """
     columns = (
-        'forecast_time', 'precipitation', 'rain', 'showers',
-        'snowfall', 'precipitation_type',
+        'forecast_time',
+        'precipitation',
+        'rain',
+        'showers',
+        'snowfall',
+        'precipitation_type',
     )
     with get_connection() as connection:
         with connection.cursor() as cursor:

@@ -38,9 +38,7 @@ class WeatherTransformer:
             field_values = values[field]
 
             if not isinstance(field_values, list):
-                raise ValueError(
-                    f'Поле Open-Meteo {field!r} должно содержать список'
-                )
+                raise ValueError(f'Поле Open-Meteo {field!r} должно содержать список')
 
             if index >= len(field_values):
                 raise ValueError(
@@ -65,9 +63,7 @@ class WeatherTransformer:
         field_values = values[field]
 
         if not isinstance(field_values, list):
-            raise ValueError(
-                f'Поле Open-Meteo {field!r} должно содержать список'
-            )
+            raise ValueError(f'Поле Open-Meteo {field!r} должно содержать список')
 
         if index >= len(field_values):
             raise ValueError(
@@ -99,9 +95,7 @@ class WeatherTransformer:
     def _validate_fetched_at(fetched_at: datetime) -> None:
         """Проверяет наличие часового пояса у времени прогноза."""
         if fetched_at.tzinfo is None or fetched_at.utcoffset() is None:
-            raise ValueError(
-                'Время получения прогноза должно содержать часовой пояс'
-            )
+            raise ValueError('Время получения прогноза должно содержать часовой пояс')
 
     @staticmethod
     def _parse_utc_timestamp(timestamp: int | float) -> datetime:
@@ -127,9 +121,7 @@ class WeatherTransformer:
             return None
 
         if value not in (0, 1):
-            raise ValueError(
-                f'Некорректное значение is_day: {value!r}'
-            )
+            raise ValueError(f'Некорректное значение is_day: {value!r}')
 
         return bool(value)
 

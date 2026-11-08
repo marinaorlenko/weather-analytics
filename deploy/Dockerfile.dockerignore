@@ -1,0 +1,48 @@
+# Git
+.git/
+.gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# Virtual environments
+.venv/
+venv/
+
+# Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Local caches and tests
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+tests/
+
+# Local application data
+data/stormy_users.pkl
+data/raw/
+data/processed/
+*.sqlite3
+
+# Development files
+.vscode/
+.idea/
+.DS_Store
+
+# Logs and backups
+*.log
+logs/
+*.bak
+*.backup
+*.dump
+*.sql.gz

@@ -11,39 +11,17 @@ import re
 
 # Выражения, соответствующие погодным показателям.
 METRICS: dict[str, tuple[str, ...]] = {
-    'temperature': (
-        r'температур|градус|тепл|холод|temperature|degrees|hot|cold',
-    ),
-    'feels_like': (
-        r'ощуща|по ощущениям|feels? like|apparent',
-    ),
-    'wind': (
-        r'ветер|ветра|ветром|порыв|wind|gust|windy',
-    ),
-    'rain': (
-        r'дожд|ливн|\brain\b|showers?',
-    ),
-    'snow': (
-        r'снег|снеж|снегопад|\bsnow\b|snowfall',
-    ),
-    'thunderstorm': (
-        r'гроз|гром|молни|thunder|lightning',
-    ),
-    'precipitation': (
-        r'осадк|precipitation',
-    ),
-    'humidity': (
-        r'влажност|humidity|humid',
-    ),
-    'cloud': (
-        r'облачност|облак|cloud|cloudy',
-    ),
-    'pressure': (
-        r'давлени|pressure',
-    ),
-    'uv': (
-        r'уф|ультрафиолет|uv[ -]?index|ultraviolet',
-    ),
+    'temperature': (r'температур|градус|тепл|холод|temperature|degrees|hot|cold',),
+    'feels_like': (r'ощуща|по ощущениям|feels? like|apparent',),
+    'wind': (r'ветер|ветра|ветром|порыв|wind|gust|windy',),
+    'rain': (r'дожд|ливн|\brain\b|showers?',),
+    'snow': (r'снег|снеж|снегопад|\bsnow\b|snowfall',),
+    'thunderstorm': (r'гроз|гром|молни|thunder|lightning',),
+    'precipitation': (r'осадк|precipitation',),
+    'humidity': (r'влажност|humidity|humid',),
+    'cloud': (r'облачност|облак|cloud|cloudy',),
+    'pressure': (r'давлени|pressure',),
+    'uv': (r'уф|ультрафиолет|uv[ -]?index|ultraviolet',),
 }
 
 
@@ -217,13 +195,9 @@ NUMERIC_DATE = re.compile(
 )
 
 RU_WORD_DATE = re.compile(
-    r'\b(\d{1,2})\s+('
-    + '|'.join(RU_MONTHS)
-    + r')(?:\s+(\d{4}))?\b',
+    r'\b(\d{1,2})\s+(' + '|'.join(RU_MONTHS) + r')(?:\s+(\d{4}))?\b',
 )
 
 EN_WORD_DATE = re.compile(
-    r'\b('
-    + '|'.join(EN_MONTHS)
-    + r')\s+(\d{1,2})(?:,?\s+(\d{4}))?\b',
+    r'\b(' + '|'.join(EN_MONTHS) + r')\s+(\d{1,2})(?:,?\s+(\d{4}))?\b',
 )

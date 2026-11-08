@@ -185,7 +185,7 @@ class WeatherLoader:
             ValueError: Если активный прогнозный запуск не найден.
             psycopg.Error: Если произошла ошибка PostgreSQL.
         """
-        run_query = '''
+        run_query = """
             UPDATE etl_runs
             SET
                 finished_at = CURRENT_TIMESTAMP,
@@ -196,7 +196,7 @@ class WeatherLoader:
               AND pipeline = 'forecast'
               AND status = 'running'
             RETURNING run_id;
-        '''
+        """
 
         # Подготавливаем три независимых набора параметров.
         # Идентификатор запуска включается в каждую запись.
@@ -221,11 +221,7 @@ class WeatherLoader:
             run_id,
         )
 
-        rows_loaded = (
-            len(daily_records)
-            + len(hourly_records)
-            + len(ecmwf_records)
-        )
+        rows_loaded = len(daily_records) + len(hourly_records) + len(ecmwf_records)
 
         # Все три таблицы и статус запуска обновляются
         # в рамках одного соединения и одной транзакции.
@@ -271,8 +267,7 @@ class WeatherLoader:
 
                 if cursor.fetchone() is None:
                     raise ValueError(
-                        'Активный прогнозный ETL-запуск '
-                        f'с run_id={run_id} не найден'
+                        f'Активный прогнозный ETL-запуск с run_id={run_id} не найден'
                     )
 
         logger.info(
@@ -317,7 +312,7 @@ class WeatherLoader:
             ValueError: Если активный исторический запуск не найден.
             psycopg.Error: Если произошла ошибка PostgreSQL.
         """
-        state_query = '''
+        state_query = """
             INSERT INTO etl_state (
                 pipeline,
                 city_id,
@@ -333,9 +328,9 @@ class WeatherLoader:
                 ),
                 last_loaded_at = NOW(),
                 updated_at = NOW();
-        '''
+        """
 
-        run_query = '''
+        run_query = """
             UPDATE etl_runs
             SET
                 finished_at = CURRENT_TIMESTAMP,
@@ -346,7 +341,7 @@ class WeatherLoader:
               AND pipeline = 'historical'
               AND status = 'running'
             RETURNING run_id;
-        '''
+        """
 
         # Подготавливаем суточные и почасовые записи
         # с единым идентификатором города.
@@ -400,8 +395,7 @@ class WeatherLoader:
 
                 if cursor.fetchone() is None:
                     raise ValueError(
-                        'Активный исторический ETL-запуск '
-                        f'с run_id={run_id} не найден'
+                        f'Активный исторический ETL-запуск с run_id={run_id} не найден'
                     )
 
         logger.info(

@@ -194,7 +194,7 @@ def extract_city(lowered: str) -> str | None:
     # Вначале рассматриваем фрагменты после предлогов.
     # Временные предлоги и выражения отбрасываются.
     for match in CITY_PREPOSITION.finditer(cleaned):
-        candidate = cleaned[match.end():]
+        candidate = cleaned[match.end() :]
         candidate = CITY_END.split(candidate, maxsplit=1)[0]
         candidate = CITY_WEATHER_WORDS.sub(' ', candidate)
         candidate = re.sub(r'\s+', ' ', candidate).strip(' ,')
@@ -281,10 +281,7 @@ def parse_query(text: str) -> WeatherQuery:
 
     target_date, day, month = extract_calendar_date(lowered)
 
-    explicit_date = (
-        target_date is not None
-        or day is not None
-    )
+    explicit_date = target_date is not None or day is not None
 
     # Явная календарная дата имеет приоритет над периодами.
     if explicit_date:

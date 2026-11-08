@@ -29,9 +29,7 @@ def build_upsert_query(
     # Для прогнозных таблиц дополнительно сохраняем идентификатор
     # конкретного ETL-запуска, сформировавшего прогноз.
     insert_columns = (
-        ('city_id', 'forecast_run_id', *columns)
-        if forecast
-        else ('city_id', *columns)
+        ('city_id', 'forecast_run_id', *columns) if forecast else ('city_id', *columns)
     )
 
     # Ключевые столбцы конфликта не обновляем.
@@ -51,17 +49,10 @@ def build_upsert_query(
         'DO UPDATE SET {updates}'
     ).format(
         table=sql.Identifier(table),
-        columns=sql.SQL(', ').join(
-            sql.Identifier(column)
-            for column in insert_columns
-        ),
-        values=sql.SQL(', ').join(
-            sql.Placeholder(column)
-            for column in insert_columns
-        ),
+        columns=sql.SQL(', ').join(sql.Identifier(column) for column in insert_columns),
+        values=sql.SQL(', ').join(sql.Placeholder(column) for column in insert_columns),
         conflict=sql.SQL(', ').join(
-            sql.Identifier(column)
-            for column in conflict_columns
+            sql.Identifier(column) for column in conflict_columns
         ),
         updates=sql.SQL(', ').join(
             sql.SQL('{} = EXCLUDED.{}').format(
@@ -97,10 +88,7 @@ def prepare_records(
         # Отсутствующие показатели передаются как NULL.
         item = {
             'city_id': city_id,
-            **{
-                column: record.get(column)
-                for column in columns
-            },
+            **{column: record.get(column) for column in columns},
         }
 
         # Идентификатор запуска необходим только прогнозным таблицам.

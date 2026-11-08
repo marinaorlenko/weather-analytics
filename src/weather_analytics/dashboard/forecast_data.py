@@ -9,7 +9,7 @@ from weather_analytics.dashboard.data import get_connection
 @st.cache_data(ttl=300)
 def load_forecast_overview(city_id: int) -> pd.DataFrame:
     """Загружает последнюю версию дневного прогноза со всеми основными метриками."""
-    query = '''
+    query = """
         SELECT
             forecast_date,
             fetched_at,
@@ -34,7 +34,7 @@ def load_forecast_overview(city_id: int) -> pd.DataFrame:
               WHERE city_id = %s
           )
         ORDER BY forecast_date
-    '''
+    """
 
     with get_connection() as connection:
         with connection.cursor() as cursor:

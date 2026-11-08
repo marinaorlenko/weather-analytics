@@ -1,6 +1,5 @@
 """Аналитический дашборд исторической погоды и прогнозов."""
 
-
 import psycopg
 import streamlit as st
 
@@ -56,11 +55,7 @@ selected_language = st.sidebar.selectbox(
     key='dashboard_language',
 )
 
-language = (
-    'ru'
-    if selected_language == 'Русский'
-    else 'en'
-)
+language = 'ru' if selected_language == 'Русский' else 'en'
 
 st.title('🌍 Weather Analytics')
 st.caption(translate('subtitle', language))
@@ -68,9 +63,7 @@ st.caption(translate('subtitle', language))
 try:
     cities = load_cities()
 except psycopg.Error as error:
-    st.error(
-        f'{translate("db_error", language)}: {error}'
-    )
+    st.error(f'{translate("db_error", language)}: {error}')
     st.stop()
 
 if cities.empty:
@@ -131,20 +124,20 @@ city_label = city_name(
 )
 
 st.subheader(city_label)
-st.caption(
-    f'{translate("timezone", language)}: {city_timezone}'
-)
+st.caption(f'{translate("timezone", language)}: {city_timezone}')
 
 
 # ---------------------------------------------------------
 # Вкладки дашборда
 # ---------------------------------------------------------
 
-history_tab, forecast_tab, comparison_tab = st.tabs([
-    translate('history_tab', language),
-    translate('forecast_tab', language),
-    translate('compare_tab', language),
-])
+history_tab, forecast_tab, comparison_tab = st.tabs(
+    [
+        translate('history_tab', language),
+        translate('forecast_tab', language),
+        translate('compare_tab', language),
+    ]
+)
 
 # =========================================================
 # Вкладка 1. Историческая погода

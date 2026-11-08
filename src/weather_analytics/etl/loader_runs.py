@@ -42,11 +42,9 @@ class ETLRunRepository:
             RuntimeError: Если PostgreSQL не вернул идентификатор запуска.
         """
         if not pipeline.strip():
-            raise ValueError(
-                'Название ETL-процесса не может быть пустым'
-            )
+            raise ValueError('Название ETL-процесса не может быть пустым')
 
-        query = '''
+        query = """
             INSERT INTO etl_runs (
                 pipeline,
                 started_at,
@@ -60,7 +58,7 @@ class ETLRunRepository:
                 0
             )
             RETURNING run_id;
-        '''
+        """
 
         # Создаём запись о запуске в отдельной транзакции.
         # Она должна существовать до начала загрузки данных.
@@ -73,9 +71,7 @@ class ETLRunRepository:
                 result = cursor.fetchone()
 
                 if result is None:
-                    raise RuntimeError(
-                        'Не удалось получить идентификатор ETL-запуска'
-                    )
+                    raise RuntimeError('Не удалось получить идентификатор ETL-запуска')
 
                 run_id = result[0]
 
@@ -103,7 +99,7 @@ class ETLRunRepository:
                 'Количество загруженных записей не может быть отрицательным'
             )
 
-        query = '''
+        query = """
             UPDATE etl_runs
             SET
                 finished_at = CURRENT_TIMESTAMP,
@@ -113,7 +109,7 @@ class ETLRunRepository:
             WHERE run_id = %(run_id)s
               AND status = 'running'
             RETURNING run_id;
-        '''
+        """
 
         # Завершаем только запуск, который ещё выполняется.
         with psycopg.connect(**self.connection_params) as connection:
@@ -127,9 +123,7 @@ class ETLRunRepository:
                 )
 
                 if cursor.fetchone() is None:
-                    raise ValueError(
-                        f'Активный ETL-запуск с run_id={run_id} не найден'
-                    )
+                    raise ValueError(f'Активный ETL-запуск с run_id={run_id} не найден')
 
         logger.info(
             'ETL-запуск завершён: run_id=%s, записей=%s',
@@ -147,7 +141,7 @@ class ETLRunRepository:
         Raises:
             ValueError: Если активный запуск не найден.
         """
-        query = '''
+        query = """
             UPDATE etl_runs
             SET
                 finished_at = CURRENT_TIMESTAMP,
@@ -156,7 +150,7 @@ class ETLRunRepository:
             WHERE run_id = %(run_id)s
               AND status = 'running'
             RETURNING run_id;
-        '''
+        """
 
         # Ошибка записывается отдельной транзакцией,
         # поскольку основная транзакция загрузки могла откатиться.
@@ -171,9 +165,7 @@ class ETLRunRepository:
                 )
 
                 if cursor.fetchone() is None:
-                    raise ValueError(
-                        f'Активный ETL-запуск с run_id={run_id} не найден'
-                    )
+                    raise ValueError(f'Активный ETL-запуск с run_id={run_id} не найден')
 
         logger.error(
             'ETL-запуск завершился с ошибкой: run_id=%s, ошибка=%s',
@@ -190,12 +182,12 @@ class ETLRunRepository:
         Returns:
             Последняя дата загрузки либо None для нового города.
         """
-        query = '''
+        query = """
             SELECT last_loaded_date
             FROM etl_state
             WHERE pipeline = 'historical'
               AND city_id = %s;
-        '''
+        """
 
         with psycopg.connect(**self.connection_params) as connection:
             with connection.cursor() as cursor:
@@ -216,7 +208,7 @@ class ETLRunRepository:
             city_id: Идентификатор города.
             loaded_date: Дата завершённого исторического периода.
         """
-        query = '''
+        query = """
             INSERT INTO etl_state (
                 pipeline,
                 city_id,
@@ -232,7 +224,7 @@ class ETLRunRepository:
                 ),
                 last_loaded_at = NOW(),
                 updated_at = NOW();
-        '''
+        """
 
         # Отдельный метод предназначен для самостоятельного
         # обновления состояния вне составной операции загрузки.

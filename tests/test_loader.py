@@ -124,21 +124,27 @@ def test_save_forecast_snapshot(
     rows_loaded = loader.save_forecast_snapshot(
         city_id=city_id,
         run_id=run_id,
-        daily_records=[{
-            'forecast_date': date(2026, 10, 30),
-            'fetched_at': fetched_at,
-            'temperature_min': 24.0,
-        }],
-        hourly_records=[{
-            'forecast_time': forecast_time,
-            'fetched_at': fetched_at,
-            'temperature': 30.5,
-        }],
-        ecmwf_records=[{
-            'forecast_time': forecast_time,
-            'fetched_at': fetched_at,
-            'cape': 150.0,
-        }],
+        daily_records=[
+            {
+                'forecast_date': date(2026, 10, 30),
+                'fetched_at': fetched_at,
+                'temperature_min': 24.0,
+            }
+        ],
+        hourly_records=[
+            {
+                'forecast_time': forecast_time,
+                'fetched_at': fetched_at,
+                'temperature': 30.5,
+            }
+        ],
+        ecmwf_records=[
+            {
+                'forecast_time': forecast_time,
+                'fetched_at': fetched_at,
+                'cape': 150.0,
+            }
+        ],
     )
 
     with db_connection.cursor() as cursor:
@@ -169,21 +175,27 @@ def test_forecast_snapshot_rollback(
         loader.save_forecast_snapshot(
             city_id=city_id,
             run_id=run_id,
-            daily_records=[{
-                'forecast_date': date(2026, 10, 30),
-                'fetched_at': fetched_at,
-                'temperature_min': 24.0,
-            }],
-            hourly_records=[{
-                'forecast_time': forecast_time,
-                'fetched_at': fetched_at,
-                'temperature': 30.5,
-            }],
-            ecmwf_records=[{
-                'forecast_time': forecast_time,
-                'fetched_at': fetched_at,
-                'cape': 'invalid',
-            }],
+            daily_records=[
+                {
+                    'forecast_date': date(2026, 10, 30),
+                    'fetched_at': fetched_at,
+                    'temperature_min': 24.0,
+                }
+            ],
+            hourly_records=[
+                {
+                    'forecast_time': forecast_time,
+                    'fetched_at': fetched_at,
+                    'temperature': 30.5,
+                }
+            ],
+            ecmwf_records=[
+                {
+                    'forecast_time': forecast_time,
+                    'fetched_at': fetched_at,
+                    'cape': 'invalid',
+                }
+            ],
         )
 
     assert loader.count_forecast_records(city_id) == (0, 0)
@@ -209,16 +221,23 @@ def test_historical_period_and_progress(
     rows_loaded = loader.save_historical_period(
         city_id=city_id,
         run_id=run_id,
-        daily_records=[{
-            'weather_date': date(2026, 10, 1),
-            'temperature_min': 25.0,
-        }],
-        hourly_records=[{
-            'weather_time': datetime(
-                2026, 10, 1, tzinfo=UTC,
-            ),
-            'temperature': 28.5,
-        }],
+        daily_records=[
+            {
+                'weather_date': date(2026, 10, 1),
+                'temperature_min': 25.0,
+            }
+        ],
+        hourly_records=[
+            {
+                'weather_time': datetime(
+                    2026,
+                    10,
+                    1,
+                    tzinfo=UTC,
+                ),
+                'temperature': 28.5,
+            }
+        ],
         loaded_date=date(2026, 10, 1),
     )
 
@@ -245,10 +264,12 @@ def test_historical_period_rollback(
         loader.save_historical_period(
             city_id=city_id,
             run_id=run_id,
-            daily_records=[{
-                'weather_date': date(2026, 10, 1),
-                'temperature_min': 25.0,
-            }],
+            daily_records=[
+                {
+                    'weather_date': date(2026, 10, 1),
+                    'temperature_min': 25.0,
+                }
+            ],
             hourly_records=[],
             loaded_date=date(2026, 10, 1),
         )
@@ -270,11 +291,11 @@ def test_etl_run_statuses(
 
     with db_connection.cursor() as cursor:
         cursor.execute(
-            '''
+            """
             SELECT run_id, status, rows_loaded, error_message
             FROM etl_runs
             WHERE run_id IN (%s, %s)
-            ''',
+            """,
             (success_id, failed_id),
         )
         results = {row[0]: row[1:] for row in cursor.fetchall()}

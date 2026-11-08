@@ -1,4 +1,3 @@
-
 """Тесты помесячной загрузки и возобновления исторического ETL."""
 
 from datetime import date
@@ -50,9 +49,7 @@ def mocked_pipeline():
     """Подменяет внешние зависимости исторического ETL."""
     with (
         patch('weather_analytics.etl.pipeline.OpenMeteoClient'),
-        patch(
-            'weather_analytics.etl.pipeline.WeatherExtractor'
-        ) as extractor_class,
+        patch('weather_analytics.etl.pipeline.WeatherExtractor') as extractor_class,
         patch(
             'weather_analytics.etl.pipeline.validate_historical_records'
         ) as validator,
@@ -92,14 +89,10 @@ def test_historical_pipeline_splits_months(
 
     # Проверяем периоды запросов к API и валидации.
     assert [
-        item.args[1:]
-        for item in extractor.extract_historical.call_args_list
+        item.args[1:] for item in extractor.extract_historical.call_args_list
     ] == expected_periods
 
-    assert [
-        item.args[1:3]
-        for item in validator.call_args_list
-    ] == expected_periods
+    assert [item.args[1:3] for item in validator.call_args_list] == expected_periods
 
     # Каждый месяц сохраняется отдельной транзакцией.
     assert loader.save_historical_period.call_args_list == [
@@ -160,9 +153,8 @@ def test_historical_pipeline_stops_after_error(
     validator.assert_called_once()
     loader.save_historical_period.assert_called_once()
 
-    assert (
-        loader.save_historical_period.call_args.kwargs['loaded_date']
-        == date(2026, 1, 31)
+    assert loader.save_historical_period.call_args.kwargs['loaded_date'] == date(
+        2026, 1, 31
     )
 
     loader.fail_run.assert_called_once()
@@ -190,10 +182,7 @@ def test_historical_pipeline_resumes_from_saved_date(
     )
 
     # Уже загруженный январь пропускается.
-    assert [
-        item.args[1:]
-        for item in extractor.extract_historical.call_args_list
-    ] == [
+    assert [item.args[1:] for item in extractor.extract_historical.call_args_list] == [
         (date(2026, 2, 1), date(2026, 2, 28)),
         (date(2026, 3, 1), date(2026, 3, 31)),
     ]

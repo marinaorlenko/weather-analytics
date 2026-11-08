@@ -27,8 +27,7 @@ def test_db_params() -> ConnectionParams:
     # Запрещаем совпадение рабочей и тестовой базы.
     if settings.db_name == TEST_DATABASE:
         pytest.fail(
-            'Рабочая конфигурация указывает на тестовую базу. '
-            'Проверь DB_NAME в .env.'
+            'Рабочая конфигурация указывает на тестовую базу. Проверь DB_NAME в .env.'
         )
 
     return {
@@ -70,9 +69,7 @@ def test_database(
                 )
 
             cursor.execute(
-                sql.SQL('CREATE DATABASE {}').format(
-                    sql.Identifier(TEST_DATABASE)
-                )
+                sql.SQL('CREATE DATABASE {}').format(sql.Identifier(TEST_DATABASE))
             )
             database_created = True
 
@@ -108,12 +105,12 @@ def test_database(
             ) as connection:
                 with connection.cursor() as cursor:
                     cursor.execute(
-                        '''
+                        """
                         SELECT pg_terminate_backend(pid)
                         FROM pg_stat_activity
                         WHERE datname = %s
                           AND pid <> pg_backend_pid()
-                        ''',
+                        """,
                         (TEST_DATABASE,),
                     )
 
@@ -138,7 +135,7 @@ def clean_database(
     with psycopg.connect(**test_db_params) as connection:
         with connection.cursor() as cursor:
             cursor.execute(
-                '''
+                """
                 TRUNCATE TABLE
                     historical_daily,
                     historical_hourly,
@@ -149,7 +146,7 @@ def clean_database(
                     etl_runs,
                     cities
                 RESTART IDENTITY CASCADE
-                '''
+                """
             )
 
     yield

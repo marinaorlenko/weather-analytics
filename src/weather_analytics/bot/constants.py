@@ -4,15 +4,13 @@ from datetime import date
 
 # Буквы русского алфавита для определения кириллических названий.
 # Используются при нормализации географических названий.
-CYRILLIC_LETTERS = frozenset(
-    'абвгдеёжзийклмнопрстуфхцчшщъыьэюя'
-)
+CYRILLIC_LETTERS = frozenset('абвгдеёжзийклмнопрстуфхцчшщъыьэюя')
 
 # Грамматические теги OpenCorpora, используемые библиотекой pymorphy3.
 GEOGRAPHICAL_TAG = 'Geox'  # Geographical name — географическое название.
-ADJECTIVE_TAG = 'ADJF'     # Adjective Full — полная форма прилагательного.
+ADJECTIVE_TAG = 'ADJF'  # Adjective Full — полная форма прилагательного.
 MASCULINE_GENDER = 'masc'  # Masculine gender — мужской род.
-NOMINATIVE_CASE = 'nomn'   # Nominative case — именительный падеж.
+NOMINATIVE_CASE = 'nomn'  # Nominative case — именительный падеж.
 
 # Настройки приблизительного поиска населённых пунктов.
 MIN_PREFIX_LENGTH = 3

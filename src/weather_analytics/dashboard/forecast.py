@@ -38,9 +38,7 @@ def prepare_hourly_time(
         .dt.tz_localize(None)
     )
 
-    result['time_label'] = result['local_time'].dt.strftime(
-        '%d.%m.%Y %H:%M'
-    )
+    result['time_label'] = result['local_time'].dt.strftime('%d.%m.%Y %H:%M')
 
     return result
 
@@ -63,25 +61,29 @@ def show_hourly_lines(
     ]
 
     if not available:
-        st.info(ui(
-            'Нет данных для графика.',
-            'No data available for this chart.',
-            language,
-        ))
+        st.info(
+            ui(
+                'Нет данных для графика.',
+                'No data available for this chart.',
+                language,
+            )
+        )
         return
 
     selected_columns = [item[0] for item in available]
     selected_labels = [item[1] for item in available]
     selected_colors = [item[2] for item in available]
 
-    chart_data = dataframe[
-        ['local_time', 'time_label', *selected_columns]
-    ].melt(
-        id_vars=['local_time', 'time_label'],
-        value_vars=selected_columns,
-        var_name='indicator',
-        value_name='value',
-    ).dropna(subset=['value'])
+    chart_data = (
+        dataframe[['local_time', 'time_label', *selected_columns]]
+        .melt(
+            id_vars=['local_time', 'time_label'],
+            value_vars=selected_columns,
+            var_name='indicator',
+            value_name='value',
+        )
+        .dropna(subset=['value'])
+    )
 
     chart_data['indicator'] = chart_data['indicator'].map(
         dict(zip(selected_columns, selected_labels, strict=True))
@@ -114,11 +116,7 @@ def show_hourly_lines(
                     domain=selected_labels,
                     range=selected_colors,
                 ),
-                legend=(
-                    alt.Legend(title=None)
-                    if len(selected_labels) > 1
-                    else None
-                ),
+                legend=(alt.Legend(title=None) if len(selected_labels) > 1 else None),
             ),
             tooltip=[
                 alt.Tooltip(
@@ -158,7 +156,8 @@ def show_temperature(
     ]
 
     available = [
-        item for item in daily_columns
+        item
+        for item in daily_columns
         if item[0] in daily and daily[item[0]].notna().any()
     ]
 
@@ -167,14 +166,16 @@ def show_temperature(
         labels = [item[1] for item in available]
         colors = [item[2] for item in available]
 
-        chart_data = daily[
-            ['forecast_date', *columns]
-        ].melt(
-            id_vars='forecast_date',
-            value_vars=columns,
-            var_name='indicator',
-            value_name='temperature',
-        ).dropna(subset=['temperature'])
+        chart_data = (
+            daily[['forecast_date', *columns]]
+            .melt(
+                id_vars='forecast_date',
+                value_vars=columns,
+                var_name='indicator',
+                value_name='temperature',
+            )
+            .dropna(subset=['temperature'])
+        )
 
         chart_data['indicator'] = chart_data['indicator'].map(
             dict(zip(columns, labels, strict=True))
@@ -231,9 +232,7 @@ def show_temperature(
 
         st.altair_chart(chart, width='stretch')
 
-    st.markdown(
-        f'**{ui("Температура по часам", "Hourly temperature", language)}**'
-    )
+    st.markdown(f'**{ui("Температура по часам", "Hourly temperature", language)}**')
 
     show_hourly_lines(
         hourly,
@@ -266,22 +265,24 @@ def show_precipitation(
             # Существующий код построения графика.
             ...
         else:
-            st.info(ui(
-                'По дневному прогнозу осадки не ожидаются.',
-                'No precipitation is expected in the daily forecast.',
-                language,
-            ))
+            st.info(
+                ui(
+                    'По дневному прогнозу осадки не ожидаются.',
+                    'No precipitation is expected in the daily forecast.',
+                    language,
+                )
+            )
     else:
-        st.info(ui(
-            'Нет данных о дневных осадках.',
-            'Daily precipitation data is unavailable.',
-            language,
-        ))
+        st.info(
+            ui(
+                'Нет данных о дневных осадках.',
+                'Daily precipitation data is unavailable.',
+                language,
+            )
+        )
 
         if precipitation.gt(0).any():
-            chart_data = daily[
-                ['forecast_date', 'precipitation']
-            ].copy()
+            chart_data = daily[['forecast_date', 'precipitation']].copy()
 
             ticks = get_date_ticks(daily, 'forecast_date')
 
@@ -321,22 +322,26 @@ def show_precipitation(
 
             st.altair_chart(chart, width='stretch')
         else:
-            st.info(ui(
-                'По дневному прогнозу осадки не ожидаются.',
-                'No precipitation is expected in the daily forecast.',
-                language,
-            ))
+            st.info(
+                ui(
+                    'По дневному прогнозу осадки не ожидаются.',
+                    'No precipitation is expected in the daily forecast.',
+                    language,
+                )
+            )
 
     if (
         'precipitation_probability' in hourly
         and hourly['precipitation_probability'].fillna(0).gt(0).any()
     ):
         st.markdown(
-            f'**{ui(
-                "Вероятность осадков по часам",
-                "Hourly precipitation probability",
-                language
-            )}**'
+            f'**{
+                ui(
+                    "Вероятность осадков по часам",
+                    "Hourly precipitation probability",
+                    language,
+                )
+            }**'
         )
 
         show_hourly_lines(
@@ -381,11 +386,13 @@ def show_precipitation_events(
     language: str,
 ) -> None:
     """Показывает только дни и часы с ожидаемыми осадками."""
-    st.subheader(ui(
-        'Когда ожидаются осадки',
-        'When precipitation is expected',
-        language,
-    ))
+    st.subheader(
+        ui(
+            'Когда ожидаются осадки',
+            'When precipitation is expected',
+            language,
+        )
+    )
 
     try:
         events = load_forecast_precipitation_events(
@@ -393,25 +400,26 @@ def show_precipitation_events(
             fetched_at,
         )
     except psycopg.Error as error:
-        st.error(ui(
-            f'Не удалось загрузить данные об осадках: {error}',
-            f'Failed to load precipitation data: {error}',
-            language,
-        ))
+        st.error(
+            ui(
+                f'Не удалось загрузить данные об осадках: {error}',
+                f'Failed to load precipitation data: {error}',
+                language,
+            )
+        )
         return
 
     if events.empty:
-        st.info(ui(
-            'В ближайшие 7 дней осадки не ожидаются.',
-            'No precipitation is expected over the next 7 days.',
-            language,
-        ))
+        st.info(
+            ui(
+                'В ближайшие 7 дней осадки не ожидаются.',
+                'No precipitation is expected over the next 7 days.',
+                language,
+            )
+        )
         return
 
-    events['local_time'] = (
-        events['forecast_time']
-        .dt.tz_convert(timezone_name)
-    )
+    events['local_time'] = events['forecast_time'].dt.tz_convert(timezone_name)
     events['date'] = events['local_time'].dt.date
     events['time'] = events['local_time'].dt.strftime('%H:%M')
 
@@ -420,22 +428,22 @@ def show_precipitation_events(
         axis=1,
     )
 
-    st.caption(ui(
-        'Показаны только часы с ненулевым количеством осадков. '
-        'Тип определяется по дождю, ливням и снегу в почасовом прогнозе.',
-        'Only hours with nonzero precipitation are shown. '
-        'Type is determined from hourly rain, showers and snowfall.',
-        language,
-    ))
+    st.caption(
+        ui(
+            'Показаны только часы с ненулевым количеством осадков. '
+            'Тип определяется по дождю, ливням и снегу в почасовом прогнозе.',
+            'Only hours with nonzero precipitation are shown. '
+            'Type is determined from hourly rain, showers and snowfall.',
+            language,
+        )
+    )
 
     for day, group in events.groupby('date', sort=True):
         with st.expander(
             day.strftime('%d.%m.%Y'),
             expanded=True,
         ):
-            display = group[
-                ['time', 'description', 'precipitation']
-            ].copy()
+            display = group[['time', 'description', 'precipitation']].copy()
 
             display.columns = [
                 ui('Время', 'Time', language),
@@ -526,15 +534,15 @@ def show_humidity(
     language: str,
 ) -> None:
     """Показывает влажность воздуха и точку росы."""
-    st.subheader(ui(
-        'Влажность и точка росы',
-        'Humidity and dew point',
-        language,
-    ))
-
-    st.markdown(
-        f'**{ui("Относительная влажность", "Relative humidity", language)}**'
+    st.subheader(
+        ui(
+            'Влажность и точка росы',
+            'Humidity and dew point',
+            language,
+        )
     )
+
+    st.markdown(f'**{ui("Относительная влажность", "Relative humidity", language)}**')
 
     show_hourly_lines(
         hourly,
@@ -546,9 +554,7 @@ def show_humidity(
     )
 
     if 'dew_point' in hourly and hourly['dew_point'].notna().any():
-        st.markdown(
-            f'**{ui("Точка росы", "Dew point", language)}**'
-        )
+        st.markdown(f'**{ui("Точка росы", "Dew point", language)}**')
 
         show_hourly_lines(
             hourly,
@@ -565,16 +571,16 @@ def show_additional(
     language: str,
 ) -> None:
     """Показывает дополнительные графики с отдельными названиями."""
-    st.subheader(ui(
-        'Дополнительные показатели',
-        'Additional metrics',
-        language,
-    ))
+    st.subheader(
+        ui(
+            'Дополнительные показатели',
+            'Additional metrics',
+            language,
+        )
+    )
 
     if 'cloud_cover' in hourly and hourly['cloud_cover'].notna().any():
-        st.markdown(
-            f'**{ui("Облачность", "Cloud cover", language)}**'
-        )
+        st.markdown(f'**{ui("Облачность", "Cloud cover", language)}**')
 
         show_hourly_lines(
             hourly,
@@ -587,9 +593,7 @@ def show_additional(
 
     if 'pressure_msl' in hourly and hourly['pressure_msl'].notna().any():
         pressure = hourly.copy()
-        pressure['pressure_msl'] = pressure_to_mmhg(
-            pressure['pressure_msl']
-        )
+        pressure['pressure_msl'] = pressure_to_mmhg(pressure['pressure_msl'])
 
         st.markdown(
             f'**{ui("Атмосферное давление", "Atmospheric pressure", language)}**'
@@ -611,12 +615,11 @@ def show_additional(
             pd.to_numeric(
                 visibility['visibility'],
                 errors='coerce',
-            ) / 1000
+            )
+            / 1000
         )
 
-        st.markdown(
-            f'**{ui("Видимость", "Visibility", language)}**'
-        )
+        st.markdown(f'**{ui("Видимость", "Visibility", language)}**')
 
         show_hourly_lines(
             visibility,
@@ -649,11 +652,13 @@ def render_forecast_tab(
         )
 
     except psycopg.Error as error:
-        st.error(ui(
-            f'Ошибка загрузки прогноза: {error}',
-            f'Forecast loading error: {error}',
-            language,
-        ))
+        st.error(
+            ui(
+                f'Ошибка загрузки прогноза: {error}',
+                f'Forecast loading error: {error}',
+                language,
+            )
+        )
         return
 
     st.caption(
@@ -662,11 +667,13 @@ def render_forecast_tab(
     )
 
     if hourly.empty:
-        st.info(ui(
-            'Почасовой прогноз пока недоступен.',
-            'Hourly forecast is not available yet.',
-            language,
-        ))
+        st.info(
+            ui(
+                'Почасовой прогноз пока недоступен.',
+                'Hourly forecast is not available yet.',
+                language,
+            )
+        )
         hourly = pd.DataFrame(columns=['local_time', 'time_label'])
     else:
         hourly = prepare_hourly_time(hourly, city_timezone)
@@ -703,17 +710,15 @@ def render_forecast_tab(
         key='forecast_sun_moon_day',
     )
 
-    with st.expander(ui(
-        'Исходные данные прогноза',
-        'Forecast source data',
-        language,
-    )):
-        st.markdown(
-            f'**{ui("По дням", "Daily", language)}**'
+    with st.expander(
+        ui(
+            'Исходные данные прогноза',
+            'Forecast source data',
+            language,
         )
+    ):
+        st.markdown(f'**{ui("По дням", "Daily", language)}**')
         st.dataframe(daily, hide_index=True, width='stretch')
 
-        st.markdown(
-            f'**{ui("По часам", "Hourly", language)}**'
-        )
+        st.markdown(f'**{ui("По часам", "Hourly", language)}**')
         st.dataframe(hourly, hide_index=True, width='stretch')

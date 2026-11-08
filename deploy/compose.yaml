@@ -1,0 +1,106 @@
+
+name: stormy
+
+# Общая конфигурация Python-сервисов.
+x-app: &app
+  build:
+    context: ..
+    dockerfile: deploy/Dockerfile
+  env_file:
+    - ../.env
+  environment:
+    APP_ENV: server
+    DB_HOST: db
+    DB_PORT: "5432"
+    DB_NAME: ${DB_NAME:-weather_analytics}
+    DB_USER: ${DB_USER:-stormy}
+    DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+  networks:
+    - backend
+
+services:
+  # PostgreSQL с постоянным хранением данных.
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-weather_analytics}
+      POSTGRES_USER: ${DB_USER:-stormy}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - backend
+
+  # Однократная инициализация схемы PostgreSQL.
+  db-init:
+    <<: *app
+    restart: "no"
+    command:
+      - python
+      - -c
+      - "from weather_analytics.db.initializer import DatabaseInitializer; DatabaseInitializer().initialize()"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # Публичный дашборд Streamlit.
+  dashboard:
+    <<: *app
+    restart: unless-stopped
+    command:
+      - streamlit
+      - run
+      - dashboard.py
+      - --server.address=0.0.0.0
+      - --server.port=8501
+      - --server.headless=true
+    ports:
+      - "127.0.0.1:8501:8501"
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+
+  # Telegram-бот Stormy.
+  bot:
+    <<: *app
+    restart: unless-stopped
+    command:
+      - python
+      - -m
+      - weather_analytics.bot.telegram_bot
+    volumes:
+      - ../data:/app/data
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+
+  # ETL запускается вручную или по расписанию.
+  etl:
+    <<: *app
+    profiles:
+      - jobs
+    restart: "no"
+    command:
+      - python
+      - main.py
+      - --mode
+      - daily
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+
+volumes:
+  postgres_data:
+
+networks:
+  backend:
+    driver: bridge

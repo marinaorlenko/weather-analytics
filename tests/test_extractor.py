@@ -46,10 +46,14 @@ def test_extract_historical(location: Location) -> None:
 
     # Проверяем вызовы API-клиента и возвращённые данные.
     client.get_historical_daily.assert_called_once_with(
-        location, start_date, end_date,
+        location,
+        start_date,
+        end_date,
     )
     client.get_historical_hourly.assert_called_once_with(
-        location, start_date, end_date,
+        location,
+        start_date,
+        end_date,
     )
 
     assert result['location'] == location

@@ -33,28 +33,30 @@ EXTRA_UNITS = {
 # Используется для проверки динамически формируемых SQL-запросов.
 # Хранится отдельно от EXTRA_UNITS, поскольку не каждый показатель
 # интерфейса обязательно соответствует физическому столбцу БД.
-EXTRA_METRIC_COLUMNS = frozenset({
-    'apparent_temperature_mean',
-    'rain_sum',
-    'snowfall_sum',
-    'sunshine_duration',
-    'daylight_duration',
-    'shortwave_radiation_sum',
-    'precipitation_probability_max',
-    'uv_index_max',
-    'wind_gusts_max',
-    'dew_point',
-    'pressure_msl',
-    'cloud_cover',
-    'wind_gusts',
-    'precipitation_probability',
-    'visibility',
-    'wind_speed',
-    'cape',
-    'precipitation_type',
-    'snowfall_water_equivalent',
-    'wet_bulb_temperature',
-})
+EXTRA_METRIC_COLUMNS = frozenset(
+    {
+        'apparent_temperature_mean',
+        'rain_sum',
+        'snowfall_sum',
+        'sunshine_duration',
+        'daylight_duration',
+        'shortwave_radiation_sum',
+        'precipitation_probability_max',
+        'uv_index_max',
+        'wind_gusts_max',
+        'dew_point',
+        'pressure_msl',
+        'cloud_cover',
+        'wind_gusts',
+        'precipitation_probability',
+        'visibility',
+        'wind_speed',
+        'cape',
+        'precipitation_type',
+        'snowfall_water_equivalent',
+        'wet_bulb_temperature',
+    }
+)
 
 # Дополнительные цвета для категорий тепловой нагрузки.
 HEAT_HIGH_COLOR = '#9367A8'

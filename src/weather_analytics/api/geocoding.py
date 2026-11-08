@@ -58,14 +58,12 @@ class OpenMeteoGeocoding:
         # Не отправляем запросы с заведомо некорректными параметрами.
         if len(city) < MIN_CITY_LENGTH:
             raise ValueError(
-                f'Название города должно содержать минимум '
-                f'{MIN_CITY_LENGTH} символа'
+                f'Название города должно содержать минимум {MIN_CITY_LENGTH} символа'
             )
 
         if not 1 <= count <= MAX_RESULT_COUNT:
             raise ValueError(
-                f'Количество результатов должно быть от 1 до '
-                f'{MAX_RESULT_COUNT}'
+                f'Количество результатов должно быть от 1 до {MAX_RESULT_COUNT}'
             )
 
         params = {

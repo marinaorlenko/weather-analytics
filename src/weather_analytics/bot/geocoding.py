@@ -62,11 +62,7 @@ def normalize_word(
 
     # Географический разбор предпочтительнее обычного.
     # Если таких разборов нет, используем исходный список.
-    geographical = [
-        parse
-        for parse in parses
-        if GEOGRAPHICAL_TAG in parse.tag
-    ]
+    geographical = [parse for parse in parses if GEOGRAPHICAL_TAG in parse.tag]
     candidates = geographical or parses
 
     # Если задан набор грамматических признаков,
@@ -105,10 +101,7 @@ def normalize_city(name: str) -> str:
     # Названия без русских букв не склоняем.
     # Это позволяет сохранить международное написание,
     # например London, Paris или New York.
-    if not any(
-        char in CYRILLIC_LETTERS
-        for char in original.casefold()
-    ):
+    if not any(char in CYRILLIC_LETTERS for char in original.casefold()):
         return original
 
     # Обрабатываем названия с устойчивой частью «-на-».
@@ -120,12 +113,9 @@ def normalize_city(name: str) -> str:
     if '-на-' in original.casefold():
         separator_index = original.casefold().index('-на-')
         prefix = original[:separator_index]
-        suffix = original[separator_index + len('-на-'):]
+        suffix = original[separator_index + len('-на-') :]
 
-        return (
-            f'{normalize_word(prefix).capitalize()}'
-            f'-на-{suffix}'
-        )
+        return f'{normalize_word(prefix).capitalize()}-на-{suffix}'
 
     words = original.split()
 
@@ -141,11 +131,7 @@ def normalize_city(name: str) -> str:
         # Выбираем географический разбор существительного.
         # Если он отсутствует, используем первый вариант.
         noun = next(
-            (
-                parse
-                for parse in noun_parses
-                if GEOGRAPHICAL_TAG in parse.tag
-            ),
+            (parse for parse in noun_parses if GEOGRAPHICAL_TAG in parse.tag),
             noun_parses[0],
         )
 
@@ -184,9 +170,7 @@ def normalize_city(name: str) -> str:
                 if ADJECTIVE_TAG not in parse.tag:
                     continue
 
-                inflected = parse.inflect(
-                    {NOMINATIVE_CASE, noun_gender}
-                )
+                inflected = parse.inflect({NOMINATIVE_CASE, noun_gender})
 
                 if inflected:
                     normalized_first = inflected.word
@@ -202,17 +186,11 @@ def normalize_city(name: str) -> str:
             # слова, чтобы не получить произвольную форму.
             normalized_first = normalize_word(first)
 
-        return (
-            f'{normalized_first.capitalize()} '
-            f'{normalized_noun.capitalize()}'
-        )
+        return f'{normalized_first.capitalize()} {normalized_noun.capitalize()}'
 
     # Для простых названий и названий с дефисами
     # нормализуем каждую часть отдельно.
-    return '-'.join(
-        normalize_word(part).capitalize()
-        for part in original.split('-')
-    )
+    return '-'.join(normalize_word(part).capitalize() for part in original.split('-'))
 
 
 def city_search_variants(name: str) -> list[str]:
@@ -235,8 +213,4 @@ def city_search_variants(name: str) -> list[str]:
 
     # dict.fromkeys сохраняет порядок появления значений
     # и одновременно удаляет повторяющиеся варианты.
-    return list(dict.fromkeys(
-        variant
-        for variant in (original, normalized)
-        if variant
-    ))
+    return list(dict.fromkeys(variant for variant in (original, normalized) if variant))

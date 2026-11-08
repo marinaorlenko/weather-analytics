@@ -1,15 +1,15 @@
-"""Оркестрация загрузки исторических и прогнозных погодных данных.
+"""Оркестрация исторической и прогнозной загрузки Stormy.
 
-Модуль управляет последовательностью ETL-операций:
-чтением городов, извлечением данных, преобразованием,
-проверкой и сохранением в PostgreSQL.
+Модуль управляет выбором городов, инициализацией PostgreSQL,
+загрузкой погодных данных, проверкой и сохранением результатов.
 
-Исторические данные загружаются по периодам с возможностью
-возобновления. Прогнозные данные сохраняются единым снимком.
+История загружается по календарным месяцам с возможностью
+возобновления. Прогнозы сохраняются отдельными снимками.
 """
 
 import logging
 from datetime import UTC, date, datetime, timedelta
+from typing import Literal
 
 from weather_analytics.api import OpenMeteoClient
 from weather_analytics.db.initializer import DatabaseInitializer
@@ -23,107 +23,128 @@ from weather_analytics.models.weather import Location
 
 logger = logging.getLogger(__name__)
 
+ETLMode = Literal['local', 'initial', 'daily', 'forecast']
+
 
 class WeatherETL:
-    """Управляет исторической и прогнозной загрузкой погодных данных."""
+    """Управляет исторической и прогнозной загрузкой данных."""
 
     def run(
         self,
-        city_limit: int = 3,
-        start_date: date = date(2026, 10, 1),
-        end_date: date = date(2026, 10, 2),
+        mode: ETLMode = 'local',
+        city_names: tuple[str, ...] | None = None,
+        start_date: date | None = None,
+        end_date: date | None = None,
     ) -> None:
-        """Запускает ETL для заданного количества городов и периода.
+        """Запускает ETL в выбранном режиме.
 
         Args:
-            city_limit: Максимальное количество обрабатываемых городов.
+            mode: Режим выполнения ETL.
+            city_names: Необязательный список выбранных городов.
             start_date: Начало исторического периода.
             end_date: Конец исторического периода.
 
         Raises:
-            ValueError: Если параметры загрузки некорректны.
+            ValueError: Если параметры запуска некорректны.
         """
-        # Проверяем входные параметры до подключения к базе
-        # и выполнения запросов к внешнему API.
-        if city_limit < 1:
-            raise ValueError(
-                'Количество городов должно быть положительным'
-            )
+        if mode not in ('local', 'initial', 'daily', 'forecast'):
+            raise ValueError(f'Неизвестный режим ETL: {mode}')
 
-        if start_date > end_date:
-            raise ValueError(
-                'Начальная дата не может быть позже конечной'
-            )
+        if mode != 'forecast':
+            if start_date is None or end_date is None:
+                raise ValueError(
+                    'Для исторической загрузки необходимо '
+                    'указать начальную и конечную даты'
+                )
 
-        # Создаём базу данных при необходимости
-        # и инициализируем компоненты ETL.
+            if start_date > end_date:
+                raise ValueError('Начальная дата не может быть позже конечной')
+
+        # Инициализируем базу и таблицы перед загрузкой.
         initializer = DatabaseInitializer()
         initializer.initialize()
 
         loader = WeatherLoader()
         transformer = WeatherTransformer()
 
-        # Читаем справочник столиц и ограничиваем выборку.
-        locations = CityReader('data/capitals.csv').read()[:city_limit]
+        locations = CityReader('data/capitals.csv').read()
 
-        successful = 0
-        failed = 0
+        # Локальная выборка определяется названиями,
+        # а не расположением строк в справочнике.
+        if city_names is not None:
+            selected = {name.casefold() for name in city_names}
+            available = {location.name.casefold() for location in locations}
+
+            missing = selected - available
+
+            if missing:
+                raise ValueError(
+                    'В справочнике отсутствуют города: ' + ', '.join(sorted(missing))
+                )
+
+            locations = [
+                location
+                for location in locations
+                if location.name.casefold() in selected
+            ]
 
         logger.info(
-            'Начало загрузки: городов=%s, период=%s — %s',
+            'Запуск ETL: режим=%s, городов=%s, период=%s — %s',
+            mode,
             len(locations),
             start_date,
             end_date,
         )
 
+        successful = 0
+        failed = 0
+
         for location in locations:
-            # Ошибка сохранения отдельного города
-            # не должна останавливать обработку остальных.
             try:
                 city_id = loader.save_city(location)
             except Exception:
                 failed += 1
                 logger.exception(
-                    'Не удалось сохранить город: %s',
+                    'Ошибка сохранения города: %s',
                     location.name,
                 )
                 continue
 
             city_success = True
 
-            # Историческая загрузка выполняется независимо
-            # от прогнозной, чтобы сбой одной не блокировал другую.
-            try:
-                self._run_historical(
-                    loader,
-                    transformer,
-                    location,
-                    city_id,
-                    start_date,
-                    end_date,
-                )
-            except Exception:
-                city_success = False
-                logger.exception(
-                    'Ошибка исторической загрузки: %s',
-                    location.name,
-                )
+            # История и прогнозы выполняются только
+            # в соответствующих режимах.
+            if mode in ('local', 'initial', 'daily'):
+                try:
+                    self._run_historical(
+                        loader,
+                        transformer,
+                        location,
+                        city_id,
+                        start_date,
+                        end_date,
+                    )
+                except Exception:
+                    city_success = False
+                    logger.exception(
+                        'Ошибка исторического ETL: %s',
+                        location.name,
+                    )
 
-            # Прогнозный снимок объединяет основной прогноз
-            # и специализированные показатели ECMWF.
-            try:
-                self._run_forecast(
-                    loader,
-                    transformer,
-                    location,
-                    city_id,
-                )
-            except Exception:
-                city_success = False
-                logger.exception(
-                    'Ошибка прогнозной загрузки: %s',
-                    location.name,
-                )
+            if mode in ('local', 'forecast'):
+                try:
+                    self._run_forecast(
+                        loader,
+                        transformer,
+                        location,
+                        city_id,
+                    )
+                except Exception:
+                    city_success = False
+                    logger.exception(
+                        'Ошибка прогнозного ETL: %s',
+                        location.name,
+                    )
 
             if city_success:
                 successful += 1
@@ -131,11 +152,14 @@ class WeatherETL:
                 failed += 1
 
         logger.info(
-            'Загрузка завершена: успешно=%s, с ошибками=%s, всего=%s',
+            'ETL завершён: успешно=%s, ошибок=%s, всего=%s',
             successful,
             failed,
             len(locations),
         )
+
+        if failed:
+            raise RuntimeError(f'ETL завершён с ошибками для {failed} городов')
 
     def _run_historical(
         self,
@@ -146,18 +170,9 @@ class WeatherETL:
         start_date: date,
         end_date: date,
     ) -> None:
-        """Загружает исторические данные с поддержкой возобновления.
-
-        Args:
-            loader: Компонент сохранения данных в PostgreSQL.
-            transformer: Компонент преобразования ответов API.
-            location: Обрабатываемая географическая локация.
-            city_id: Идентификатор города в базе данных.
-            start_date: Начало запрошенного периода.
-            end_date: Конец запрошенного периода.
-        """
-        # Определяем последнюю успешно загруженную дату.
-        # Уже завершённые периоды повторно не запрашиваем.
+        """Загружает историю с сохранением прогресса по городам."""
+        # Продолжаем со следующего дня после успешно
+        # сохранённого периода.
         last_loaded_date = loader.get_last_loaded_date(city_id)
 
         if last_loaded_date is not None:
@@ -168,22 +183,18 @@ class WeatherETL:
 
         if start_date > end_date:
             logger.info(
-                'Историческая загрузка не требуется: %s, '
-                'данные уже загружены',
+                'История города %s уже загружена до %s',
                 location.name,
+                end_date,
             )
             return
 
-        # Разбиваем диапазон на отдельные интервалы.
-        # Каждый интервал обрабатывается самостоятельно.
         periods = split_date_range(start_date, end_date)
 
         for period_start, period_end in periods:
             run_id = loader.start_run('historical')
 
             try:
-                # Извлекаем суточные и почасовые данные
-                # через единый публичный клиент Open-Meteo.
                 with OpenMeteoClient() as client:
                     extractor = WeatherExtractor(client)
                     data = extractor.extract_historical(
@@ -192,8 +203,6 @@ class WeatherETL:
                         period_end,
                     )
 
-                # Преобразуем ответы API в записи,
-                # соответствующие структуре таблиц PostgreSQL.
                 daily_records = transformer.transform_historical_daily(
                     location,
                     {'daily': data['daily']},
@@ -204,8 +213,6 @@ class WeatherETL:
                     {'hourly': data['hourly']},
                 )
 
-                # Проверяем полноту исторических данных
-                # до начала транзакционного сохранения.
                 validate_historical_records(
                     location,
                     period_start,
@@ -214,8 +221,8 @@ class WeatherETL:
                     hourly_records,
                 )
 
-                # Данные, прогресс и статус ETL-запуска
-                # сохраняются одной транзакцией.
+                # Записи, прогресс и статус запуска сохраняются
+                # в одной транзакции существующего Loader.
                 rows_loaded = loader.save_historical_period(
                     city_id=city_id,
                     run_id=run_id,
@@ -225,25 +232,19 @@ class WeatherETL:
                 )
 
                 logger.info(
-                    'Исторический ETL завершён: %s, период %s — %s, '
-                    'ежедневных=%s, почасовых=%s, всего=%s',
+                    'История: %s, %s — %s, записей=%s',
                     location.name,
                     period_start,
                     period_end,
-                    len(daily_records),
-                    len(hourly_records),
                     rows_loaded,
                 )
 
             except Exception as error:
-                # Ошибку регистрируем отдельно от транзакции
-                # загрузки, которая могла быть отменена.
                 try:
                     loader.fail_run(run_id, error)
                 except Exception:
                     logger.exception(
-                        'Не удалось зарегистрировать ошибку '
-                        'исторического ETL: run_id=%s',
+                        'Ошибка регистрации сбоя ETL: run_id=%s',
                         run_id,
                     )
 
@@ -256,49 +257,34 @@ class WeatherETL:
         location: Location,
         city_id: int,
     ) -> None:
-        """Загружает основной прогноз и ECMWF единым снимком.
-
-        Args:
-            loader: Компонент сохранения данных в PostgreSQL.
-            transformer: Компонент преобразования ответов API.
-            location: Обрабатываемая географическая локация.
-            city_id: Идентификатор города в базе данных.
-        """
+        """Загружает основной прогноз и ECMWF единым снимком."""
         run_id = loader.start_run('forecast')
 
         try:
-            # Используем единое время получения снимка
-            # для всех прогнозных таблиц.
             fetched_at = datetime.now(UTC)
 
-            # Получаем суточный, почасовой и ECMWF-прогнозы.
             with OpenMeteoClient() as client:
                 extractor = WeatherExtractor(client)
                 data = extractor.extract_forecast(location)
 
-            # Преобразуем суточные показатели прогноза.
             daily_records = transformer.transform_forecast_daily(
                 location,
                 {'daily': data['daily']},
                 fetched_at,
             )
 
-            # Преобразуем почасовые показатели прогноза.
             hourly_records = transformer.transform_forecast_hourly(
                 location,
                 {'hourly': data['hourly']},
                 fetched_at,
             )
 
-            # Преобразуем специализированные показатели ECMWF.
             ecmwf_records = transformer.transform_ecmwf_hourly(
                 location,
                 {'hourly': data['ecmwf_hourly']},
                 fetched_at,
             )
 
-            # Все прогнозные таблицы и статус ETL-запуска
-            # обновляются одной транзакцией.
             rows_loaded = loader.save_forecast_snapshot(
                 city_id=city_id,
                 run_id=run_id,
@@ -308,25 +294,18 @@ class WeatherETL:
             )
 
             logger.info(
-                'Прогнозный ETL завершён: %s, fetched_at=%s, '
-                'ежедневных=%s, почасовых=%s, ECMWF=%s, всего=%s',
+                'Прогноз: %s, fetched_at=%s, записей=%s',
                 location.name,
                 fetched_at.isoformat(),
-                len(daily_records),
-                len(hourly_records),
-                len(ecmwf_records),
                 rows_loaded,
             )
 
         except Exception as error:
-            # При сбое сохранения Loader откатывает транзакцию.
-            # Неудачный ETL-запуск регистрируем отдельно.
             try:
                 loader.fail_run(run_id, error)
             except Exception:
                 logger.exception(
-                    'Не удалось зарегистрировать ошибку '
-                    'прогнозного ETL: run_id=%s',
+                    'Ошибка регистрации сбоя прогноза: run_id=%s',
                     run_id,
                 )
 

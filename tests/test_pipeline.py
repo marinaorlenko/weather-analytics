@@ -1,4 +1,3 @@
-
 """Тесты общей оркестрации ETL и загрузки прогнозов.
 
 Внешние зависимости подменяются имитациями без обращения к API и PostgreSQL.
@@ -13,6 +12,9 @@ from weather_analytics.etl.pipeline import WeatherETL
 from weather_analytics.models.weather import Location
 
 PIPELINE_MODULE = 'weather_analytics.etl.pipeline'
+
+START_DATE = date(2026, 10, 1)
+END_DATE = date(2026, 10, 2)
 
 
 @pytest.fixture
@@ -87,15 +89,11 @@ def forecast_dependencies():
         yield extractor
 
 
-@pytest.mark.parametrize('city_limit', [0, -1])
-def test_run_invalid_city_limit(etl, city_limit) -> None:
-    """Проверяет отказ от неположительного количества городов."""
+def test_run_invalid_mode(etl) -> None:
+    """Проверяет отказ от неизвестного режима ETL."""
     with patch(f'{PIPELINE_MODULE}.DatabaseInitializer') as initializer:
-        with pytest.raises(
-            ValueError,
-            match='Количество городов должно быть положительным',
-        ):
-            etl.run(city_limit=city_limit)
+        with pytest.raises(ValueError, match='Неизвестный режим ETL'):
+            etl.run(mode='unknown')
 
     initializer.assert_not_called()
 
@@ -115,65 +113,124 @@ def test_run_invalid_date_range(etl) -> None:
     initializer.assert_not_called()
 
 
+def test_run_missing_dates(etl) -> None:
+    """Проверяет обязательность дат для исторических режимов."""
+    with patch(f'{PIPELINE_MODULE}.DatabaseInitializer') as initializer:
+        with pytest.raises(
+            ValueError,
+            match='Для исторической загрузки необходимо',
+        ):
+            etl.run(mode='initial')
+
+    initializer.assert_not_called()
+
+
 def test_run_initializes_database(etl, dependencies) -> None:
     """Проверяет инициализацию БД и чтение справочника городов."""
     with (
         patch.object(etl, '_run_historical'),
         patch.object(etl, '_run_forecast'),
     ):
-        etl.run(city_limit=1)
+        etl.run(
+            mode='local',
+            city_names=('Dubai',),
+            start_date=START_DATE,
+            end_date=END_DATE,
+        )
 
     dependencies['initializer'].return_value.initialize.assert_called_once_with()
     dependencies['reader'].assert_called_once_with('data/capitals.csv')
 
 
-def test_run_respects_city_limit(etl, dependencies, locations) -> None:
-    """Проверяет ограничение количества обрабатываемых городов."""
-    with (
-        patch.object(etl, '_run_historical') as historical,
-        patch.object(etl, '_run_forecast') as forecast,
-    ):
-        etl.run(city_limit=2)
-
-    assert dependencies['loader'].save_city.call_count == 2
-    assert historical.call_count == 2
-    assert forecast.call_count == 2
-
-    assert [
-        item.args[2]
-        for item in historical.call_args_list
-    ] == locations[:2]
-
-
-def test_run_calls_both_pipelines(etl, dependencies, locations) -> None:
-    """Проверяет запуск истории и прогноза для одного города."""
+def test_run_selects_cities_by_name(etl, dependencies, locations) -> None:
+    """Проверяет выбор городов по названиям независимо от порядка."""
     with (
         patch.object(etl, '_run_historical') as historical,
         patch.object(etl, '_run_forecast') as forecast,
     ):
         etl.run(
-            city_limit=1,
-            start_date=date(2026, 10, 1),
-            end_date=date(2026, 10, 2),
+            mode='local',
+            city_names=('Paris', 'Dubai'),
+            start_date=START_DATE,
+            end_date=END_DATE,
+        )
+
+    assert dependencies['loader'].save_city.call_count == 2
+    assert historical.call_count == 2
+    assert forecast.call_count == 2
+
+    assert [item.args[2] for item in historical.call_args_list] == [
+        locations[0],
+        locations[2],
+    ]
+
+
+def test_run_unknown_city(etl, dependencies) -> None:
+    """Проверяет отказ от города, отсутствующего в справочнике."""
+    with pytest.raises(
+        ValueError,
+        match='В справочнике отсутствуют города',
+    ):
+        etl.run(
+            mode='forecast',
+            city_names=('Unknown City',),
+        )
+
+    dependencies['loader'].save_city.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ('mode', 'expected_historical', 'expected_forecast'),
+    [
+        ('local', True, True),
+        ('initial', True, False),
+        ('daily', True, False),
+        ('forecast', False, True),
+    ],
+)
+def test_run_modes(
+    etl,
+    dependencies,
+    mode,
+    expected_historical,
+    expected_forecast,
+) -> None:
+    """Проверяет запуск нужных процессов для каждого режима ETL."""
+    with (
+        patch.object(etl, '_run_historical') as historical,
+        patch.object(etl, '_run_forecast') as forecast,
+    ):
+        etl.run(
+            mode=mode,
+            city_names=('Dubai',),
+            start_date=START_DATE,
+            end_date=END_DATE,
         )
 
     loader = dependencies['loader']
     transformer = dependencies['transformer']
 
-    historical.assert_called_once_with(
-        loader,
-        transformer,
-        locations[0],
-        1,
-        date(2026, 10, 1),
-        date(2026, 10, 2),
-    )
-    forecast.assert_called_once_with(
-        loader,
-        transformer,
-        locations[0],
-        1,
-    )
+    if expected_historical:
+        historical.assert_called_once_with(
+            loader,
+            transformer,
+            dependencies['reader'].return_value.read.return_value[0],
+            1,
+            START_DATE,
+            END_DATE,
+        )
+    else:
+        historical.assert_not_called()
+
+    if expected_forecast:
+        forecast.assert_called_once_with(
+            loader,
+            transformer,
+            dependencies['reader'].return_value.read.return_value[0],
+            1,
+        )
+    else:
+        forecast.assert_not_called()
 
 
 def test_run_city_save_failure_does_not_stop_other_cities(
@@ -191,11 +248,20 @@ def test_run_city_save_failure_does_not_stop_other_cities(
         patch.object(etl, '_run_historical') as historical,
         patch.object(etl, '_run_forecast') as forecast,
     ):
-        etl.run(city_limit=2)
+        with pytest.raises(
+            RuntimeError,
+            match='ETL завершён с ошибками для 1 городов',
+        ):
+            etl.run(
+                mode='local',
+                city_names=('Dubai', 'London'),
+                start_date=START_DATE,
+                end_date=END_DATE,
+            )
 
     assert loader.save_city.call_count == 2
-    assert historical.call_count == 1
-    assert forecast.call_count == 1
+    historical.assert_called_once()
+    forecast.assert_called_once()
     assert historical.call_args.args[3] == 2
     assert forecast.call_args.args[3] == 2
 
@@ -213,7 +279,16 @@ def test_run_historical_failure_does_not_block_forecast(
         ) as historical,
         patch.object(etl, '_run_forecast') as forecast,
     ):
-        etl.run(city_limit=1)
+        with pytest.raises(
+            RuntimeError,
+            match='ETL завершён с ошибками для 1 городов',
+        ):
+            etl.run(
+                mode='local',
+                city_names=('Dubai',),
+                start_date=START_DATE,
+                end_date=END_DATE,
+            )
 
     historical.assert_called_once()
     forecast.assert_called_once()
@@ -224,20 +299,23 @@ def test_run_forecast_failure_does_not_block_next_city(
     dependencies,
 ) -> None:
     """Проверяет продолжение ETL после ошибки прогноза."""
-    with (
-        patch.object(etl, '_run_historical') as historical,
-        patch.object(
-            etl,
-            '_run_forecast',
-            side_effect=[
-                RuntimeError('Ошибка прогноза'),
-                None,
-            ],
-        ) as forecast,
-    ):
-        etl.run(city_limit=2)
+    with patch.object(
+        etl,
+        '_run_forecast',
+        side_effect=[
+            RuntimeError('Ошибка прогноза'),
+            None,
+        ],
+    ) as forecast:
+        with pytest.raises(
+            RuntimeError,
+            match='ETL завершён с ошибками для 1 городов',
+        ):
+            etl.run(
+                mode='forecast',
+                city_names=('Dubai', 'London'),
+            )
 
-    assert historical.call_count == 2
     assert forecast.call_count == 2
 
 

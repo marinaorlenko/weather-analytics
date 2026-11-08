@@ -183,9 +183,7 @@ class WeatherExtractor:
             httpx.HTTPError: При сетевой ошибке или ошибочном HTTP-статусе.
         """
         if start_date > end_date:
-            raise ValueError(
-                'Начальная дата не может быть позже конечной'
-            )
+            raise ValueError('Начальная дата не может быть позже конечной')
 
         logger.info(
             'Загрузка истории: %s (%s — %s)',

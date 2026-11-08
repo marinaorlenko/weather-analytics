@@ -27,16 +27,14 @@ def historical_records() -> tuple[list[dict], list[dict]]:
 
     # Формируем две последовательные календарные даты.
     daily_records = [
-        {'weather_date': start_date + timedelta(days=offset)}
-        for offset in range(2)
+        {'weather_date': start_date + timedelta(days=offset)} for offset in range(2)
     ]
 
     # Полночь 1 октября в Дубае соответствует 20:00 UTC 30 сентября.
     start_utc = datetime(2026, 9, 30, 20, tzinfo=UTC)
 
     hourly_records = [
-        {'weather_time': start_utc + timedelta(hours=offset)}
-        for offset in range(48)
+        {'weather_time': start_utc + timedelta(hours=offset)} for offset in range(48)
     ]
 
     return daily_records, hourly_records

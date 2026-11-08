@@ -1,10 +1,11 @@
 """baseline existing schema
 
 Revision ID: c9af41acf081
-Revises: 
+Revises:
 Create Date: 2026-11-01 12:07:21.624113
 
 """
+
 from collections.abc import Sequence
 
 # revision identifiers, used by Alembic.

@@ -28,9 +28,7 @@ def prepare_local_time(
         .dt.tz_localize(None)
     )
 
-    result['date_label'] = result['local_time'].dt.strftime(
-        '%d.%m.%Y %H:%M'
-    )
+    result['date_label'] = result['local_time'].dt.strftime('%d.%m.%Y %H:%M')
 
     return result
 
@@ -52,12 +50,7 @@ def get_date_ticks(
         return []
 
     # Нормализация времени убирает повторяющиеся отметки внутри суток.
-    return (
-        dates.dt.normalize()
-        .drop_duplicates()
-        .sort_values()
-        .tolist()
-    )
+    return dates.dt.normalize().drop_duplicates().sort_values().tolist()
 
 
 def date_axis(
@@ -91,14 +84,9 @@ def prepare_daily_chart(
     """Преобразует ежедневные показатели в длинный формат."""
     extra_columns = extra_columns or []
 
-    result = dataframe[
-        [date_column, *columns, *extra_columns]
-    ].copy()
+    result = dataframe[[date_column, *columns, *extra_columns]].copy()
 
-    result['date_label'] = (
-        pd.to_datetime(result[date_column])
-        .dt.strftime('%d.%m.%Y')
-    )
+    result['date_label'] = pd.to_datetime(result[date_column]).dt.strftime('%d.%m.%Y')
 
     result = result.melt(
         id_vars=[date_column, 'date_label', *extra_columns],
@@ -139,11 +127,13 @@ def show_daily_chart(
     chart_data = chart_data.dropna(subset=['value'])
 
     if chart_data.empty:
-        st.info(ui(
-            'Нет данных для графика.',
-            'No data available for this chart.',
-            language,
-        ))
+        st.info(
+            ui(
+                'Нет данных для графика.',
+                'No data available for this chart.',
+                language,
+            )
+        )
         return
 
     ticks = get_date_ticks(dataframe, date_column)
@@ -192,11 +182,7 @@ def show_daily_chart(
                 domain=labels,
                 range=colors,
             ),
-            legend=(
-                alt.Legend(title=None)
-                if len(labels) > 1
-                else None
-            ),
+            legend=(alt.Legend(title=None) if len(labels) > 1 else None),
         ),
         tooltip=tooltip,
     )
@@ -227,11 +213,13 @@ def show_hourly_chart(
     st.subheader(title)
 
     if dataframe.empty or column not in dataframe:
-        st.info(ui(
-            'Нет почасовых данных.',
-            'No hourly data available.',
-            language,
-        ))
+        st.info(
+            ui(
+                'Нет почасовых данных.',
+                'No hourly data available.',
+                language,
+            )
+        )
         return
 
     plot_data = dataframe.dropna(subset=['local_time', column]).copy()
@@ -290,13 +278,9 @@ def show_comparison_chart(
     language: str,
 ) -> None:
     """Сравнивает среднесуточную температуру двух городов."""
-    first = first_data[
-        ['weather_date', 'average_temperature']
-    ].copy()
+    first = first_data[['weather_date', 'average_temperature']].copy()
 
-    second = second_data[
-        ['weather_date', 'average_temperature']
-    ].copy()
+    second = second_data[['weather_date', 'average_temperature']].copy()
 
     comparison = first.merge(
         second,
@@ -309,10 +293,7 @@ def show_comparison_chart(
         st.info(translate('no_common', language))
         return
 
-    comparison['date_label'] = (
-        comparison['weather_date']
-        .dt.strftime('%d.%m.%Y')
-    )
+    comparison['date_label'] = comparison['weather_date'].dt.strftime('%d.%m.%Y')
 
     chart_data = comparison.melt(
         id_vars=['weather_date', 'date_label'],
@@ -324,10 +305,12 @@ def show_comparison_chart(
         value_name='temperature',
     )
 
-    chart_data['city'] = chart_data['city'].map({
-        'average_temperature_first': first_label,
-        'average_temperature_second': second_label,
-    })
+    chart_data['city'] = chart_data['city'].map(
+        {
+            'average_temperature_first': first_label,
+            'average_temperature_second': second_label,
+        }
+    )
 
     ticks = get_date_ticks(comparison, 'weather_date')
 
@@ -381,15 +364,13 @@ def show_comparison_chart(
 
     st.altair_chart(chart, width='stretch')
 
-    st.caption(
-        f'{translate("common_days", language)}: '
-        f'{len(comparison)}'
-    )
+    st.caption(f'{translate("common_days", language)}: {len(comparison)}')
 
 
 # ---------------------------------------------------------
 # Дополнительные показатели
 # ---------------------------------------------------------
+
 
 def show_extra_charts(
     dataframe: pd.DataFrame,
@@ -423,9 +404,7 @@ def show_extra_charts(
         if column not in plot_data:
             continue
 
-        values = plot_data[
-            [x_column, column]
-        ].dropna().copy()
+        values = plot_data[[x_column, column]].dropna().copy()
 
         if values.empty:
             continue
@@ -451,11 +430,8 @@ def show_extra_charts(
         st.subheader(label)
 
         # Полная дата и время доступны при наведении.
-        values['time_label'] = (
-            pd.to_datetime(values[x_column])
-            .dt.strftime(
-                '%d.%m.%Y' if daily else '%d.%m.%Y %H:%M'
-            )
+        values['time_label'] = pd.to_datetime(values[x_column]).dt.strftime(
+            '%d.%m.%Y' if daily else '%d.%m.%Y %H:%M'
         )
 
         chart = (

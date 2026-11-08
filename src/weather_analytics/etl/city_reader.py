@@ -44,9 +44,7 @@ class CityReader:
 
             missing = self.REQUIRED_COLUMNS - set(reader.fieldnames)
             if missing:
-                raise ValueError(
-                    f'В CSV отсутствуют колонки: {sorted(missing)}'
-                )
+                raise ValueError(f'В CSV отсутствуют колонки: {sorted(missing)}')
 
             for line_number, row in enumerate(reader, start=2):
                 # Проверяем заполненность всех обязательных полей.
@@ -54,9 +52,7 @@ class CityReader:
                     not row.get(column) or not row[column].strip()
                     for column in self.REQUIRED_COLUMNS
                 ):
-                    raise ValueError(
-                        f'Пустое обязательное поле в строке {line_number}'
-                    )
+                    raise ValueError(f'Пустое обязательное поле в строке {line_number}')
 
                 # Преобразуем координаты в числа и проверяем диапазоны.
                 try:
@@ -68,14 +64,10 @@ class CityReader:
                     ) from error
 
                 if not isfinite(latitude) or not -90 <= latitude <= 90:
-                    raise ValueError(
-                        f'Некорректная широта в строке {line_number}'
-                    )
+                    raise ValueError(f'Некорректная широта в строке {line_number}')
 
                 if not isfinite(longitude) or not -180 <= longitude <= 180:
-                    raise ValueError(
-                        f'Некорректная долгота в строке {line_number}'
-                    )
+                    raise ValueError(f'Некорректная долгота в строке {line_number}')
 
                 # Проверяем, что часовой пояс известен базе IANA.
                 try:
@@ -95,8 +87,7 @@ class CityReader:
 
                 if unique_key in seen_codes:
                     raise ValueError(
-                        f'Повторяющийся город в строке {line_number}: '
-                        f'{row["capital"]}'
+                        f'Повторяющийся город в строке {line_number}: {row["capital"]}'
                     )
 
                 seen_codes.add(unique_key)

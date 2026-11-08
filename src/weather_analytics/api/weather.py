@@ -89,9 +89,7 @@ class OpenMeteoWeather:
             ValueError: Если начальная дата позже конечной.
         """
         if start_date > end_date:
-            raise ValueError(
-                'Начальная дата не может быть позже конечной'
-            )
+            raise ValueError('Начальная дата не может быть позже конечной')
 
     @staticmethod
     def _validate_forecast_days(
@@ -112,8 +110,7 @@ class OpenMeteoWeather:
         if not 1 <= forecast_days <= max_days:
             name = f' {source}' if source else ''
             raise ValueError(
-                f'Количество дней прогноза{name} '
-                f'должно быть от 1 до {max_days}'
+                f'Количество дней прогноза{name} должно быть от 1 до {max_days}'
             )
 
     @staticmethod
@@ -422,11 +419,7 @@ class OpenMeteoWeather:
         }
 
         # Выбираем конечную точку API по типу периода.
-        url = (
-            self._client.archive_url
-            if historical
-            else self._client.forecast_url
-        )
+        url = self._client.archive_url if historical else self._client.forecast_url
 
         data = self._client.get(url, params)
 

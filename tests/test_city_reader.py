@@ -102,8 +102,7 @@ def test_read_duplicate_city(csv_file):
     """Проверяет обнаружение повторяющегося города."""
     with csv_file.open('a', encoding='utf-8') as file:
         file.write(
-            'Germany,DE,Berlin,52.5200,13.4050,'
-            'Europe/Berlin,sovereign,verified\n'
+            'Germany,DE,Berlin,52.5200,13.4050,Europe/Berlin,sovereign,verified\n'
         )
 
     with pytest.raises(ValueError, match='Повторяющийся город'):

@@ -57,21 +57,29 @@ def moon_phase(day, language: str) -> tuple[str, str, float]:
     # Опорное новолуние: 6 января 2000 года, 18:14 UTC.
     reference = datetime(2000, 1, 6, 18, 14, tzinfo=UTC)
     moment = datetime.combine(day, datetime.min.time(), tzinfo=UTC)
-    age = (
-        (moment - reference) / timedelta(days=1)
-    ) % SYNODIC_MONTH_DAYS
+    age = ((moment - reference) / timedelta(days=1)) % SYNODIC_MONTH_DAYS
     fraction = age / SYNODIC_MONTH_DAYS
     illumination = (1 - math.cos(2 * math.pi * fraction)) / 2 * 100
 
     names_ru = [
-        'Новолуние', 'Растущий серп', 'Первая четверть',
-        'Растущая Луна', 'Полнолуние', 'Убывающая Луна',
-        'Последняя четверть', 'Убывающий серп',
+        'Новолуние',
+        'Растущий серп',
+        'Первая четверть',
+        'Растущая Луна',
+        'Полнолуние',
+        'Убывающая Луна',
+        'Последняя четверть',
+        'Убывающий серп',
     ]
     names_en = [
-        'New moon', 'Waxing crescent', 'First quarter',
-        'Waxing gibbous', 'Full moon', 'Waning gibbous',
-        'Last quarter', 'Waning crescent',
+        'New moon',
+        'Waxing crescent',
+        'First quarter',
+        'Waxing gibbous',
+        'Full moon',
+        'Waning gibbous',
+        'Last quarter',
+        'Waning crescent',
     ]
     symbols = ['🌑', '🌒', '🌓', '🌔', '🌕', '🌖', '🌗', '🌘']
     index = int((fraction * 8 + 0.5) % 8)
@@ -105,11 +113,13 @@ def show_wind_compass(
     valid = history.dropna(subset=['wind_direction_dominant']).copy()
 
     if valid.empty:
-        st.info(ui(
-            'Нет данных о направлении ветра.',
-            'No wind direction data.',
-            language,
-        ))
+        st.info(
+            ui(
+                'Нет данных о направлении ветра.',
+                'No wind direction data.',
+                language,
+            )
+        )
         return
 
     # Для компаса выбирается конкретный день,
@@ -128,9 +138,7 @@ def show_wind_compass(
     direction_label = wind_direction(direction, language)
     speed = row.get('wind_speed_max')
     speed_text = (
-        f'{float(speed):.1f} {ui("км/ч", "km/h", language)}'
-        if pd.notna(speed)
-        else '—'
+        f'{float(speed):.1f} {ui("км/ч", "km/h", language)}' if pd.notna(speed) else '—'
     )
 
     left, right = st.columns([1, 2], vertical_alignment='center')
@@ -138,9 +146,7 @@ def show_wind_compass(
     with left:
         # Компас статичен: сторонние графические библиотеки не нужны.
         compass_labels = (
-            ('С', 'В', 'Ю', 'З')
-            if language == 'ru'
-            else ('N', 'E', 'S', 'W')
+            ('С', 'В', 'Ю', 'З') if language == 'ru' else ('N', 'E', 'S', 'W')
         )
 
         marks = ''.join(
@@ -205,13 +211,15 @@ def show_wind_compass(
                 f'{float(gusts):.1f} {ui("км/ч", "km/h", language)}',
             )
 
-        st.caption(ui(
-            'Стрелка указывает, откуда дует ветер. '
-            'Показано преобладающее направление за день.',
-            'The arrow points to where the wind comes from. '
-            'The prevailing daily direction is shown.',
-            language,
-        ))
+        st.caption(
+            ui(
+                'Стрелка указывает, откуда дует ветер. '
+                'Показано преобладающее направление за день.',
+                'The arrow points to where the wind comes from. '
+                'The prevailing daily direction is shown.',
+                language,
+            )
+        )
 
 
 def show_sun_and_moon(
@@ -223,11 +231,13 @@ def show_sun_and_moon(
 ) -> None:
     """Показывает восход, закат, продолжительность дня и фазу Луны."""
     if history.empty:
-        st.info(ui(
-            'Нет данных о Солнце и Луне.',
-            'No sun and moon data.',
-            language,
-        ))
+        st.info(
+            ui(
+                'Нет данных о Солнце и Луне.',
+                'No sun and moon data.',
+                language,
+            )
+        )
         return
 
     st.subheader(ui('Солнце', 'Sun', language))
@@ -241,9 +251,7 @@ def show_sun_and_moon(
         key=key,
     )
 
-    row = history.loc[
-        history[date_column].dt.date == selected
-    ].iloc[0]
+    row = history.loc[history[date_column].dt.date == selected].iloc[0]
 
     sunrise = row.get('sunrise')
     sunset = row.get('sunset')
@@ -263,8 +271,7 @@ def show_sun_and_moon(
     # по времени восхода и заката.
     if duration == '—' and pd.notna(sunrise) and pd.notna(sunset):
         minutes = round(
-            (pd.Timestamp(sunset) - pd.Timestamp(sunrise))
-            .total_seconds() / 60
+            (pd.Timestamp(sunset) - pd.Timestamp(sunrise)).total_seconds() / 60
         )
 
         if minutes >= 0:
@@ -294,24 +301,22 @@ def show_sun_and_moon(
 
     with left:
         st.markdown(
-            f'<div style="font-size:64px;text-align:center">'
-            f'{symbol}</div>',
+            f'<div style="font-size:64px;text-align:center">{symbol}</div>',
             unsafe_allow_html=True,
         )
 
     with right:
         st.markdown(f'**{phase}**')
         st.caption(
-            f'{ui("Освещённость", "Illumination", language)}: '
-            f'≈ {illumination:.0f}%'
+            f'{ui("Освещённость", "Illumination", language)}: ≈ {illumination:.0f}%'
         )
-        st.caption(ui(
-            'Приблизительный астрономический расчёт, '
-            'не данные погодного API.',
-            'Approximate astronomical calculation, '
-            'not weather API data.',
-            language,
-        ))
+        st.caption(
+            ui(
+                'Приблизительный астрономический расчёт, не данные погодного API.',
+                'Approximate astronomical calculation, not weather API data.',
+                language,
+            )
+        )
 
 
 def pressure_to_mmhg(values):

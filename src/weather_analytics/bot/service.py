@@ -152,11 +152,7 @@ class WeatherService:
         )
 
         return {
-            'kind': (
-                query.period
-                if query.period in ('week', 'weekend')
-                else 'day'
-            ),
+            'kind': (query.period if query.period in ('week', 'weekend') else 'day'),
             'date': start,
             'daily': data['daily'],
             'hourly': data.get('hourly') or {},

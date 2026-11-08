@@ -369,11 +369,7 @@ def _day_observations(
     times = hourly.get('time') or []
     values = hourly.get(key) or []
 
-    for index, (timestamp, value) in enumerate(zip(
-        times,
-        values,
-        strict=True
-    )):
+    for index, (timestamp, value) in enumerate(zip(times, values, strict=True)):
         moment = datetime.fromisoformat(str(timestamp))
 
         if moment.date().isoformat() == day:
@@ -432,10 +428,7 @@ def get_period_temperature(
             day,
             'temperature_2m',
         )
-        if (
-            temperature is not None
-            and start_hour <= moment.hour <= end_hour
-        )
+        if (temperature is not None and start_hour <= moment.hour <= end_hour)
     ]
 
     return mean(values) if values else None
@@ -465,15 +458,11 @@ def get_hourly_events(
             active = value in THUNDERSTORM_CODES
 
         elif metric == 'rain':
-            shower = (
-                showers[index]
-                if index < len(showers)
-                else None
-            )
+            shower = showers[index] if index < len(showers) else None
 
-            active = (
-                value is not None or shower is not None
-            ) and (value or 0) + (shower or 0) > 0
+            active = (value is not None or shower is not None) and (value or 0) + (
+                shower or 0
+            ) > 0
 
         else:
             active = value is not None and value > 0
@@ -495,11 +484,13 @@ def compact_event_hours(hours: list[str]) -> str:
 
     # Преобразуем часы в минуты от полуночи,
     # удаляем повторяющиеся значения и сортируем.
-    minutes = sorted({
-        int(hour) * MINUTES_PER_HOUR + int(minute)
-        for value in hours
-        for hour, minute in [value.split(':')]
-    })
+    minutes = sorted(
+        {
+            int(hour) * MINUTES_PER_HOUR + int(minute)
+            for value in hours
+            for hour, minute in [value.split(':')]
+        }
+    )
 
     intervals = []
     start = end = minutes[0]
@@ -519,11 +510,7 @@ def compact_event_hours(hours: list[str]) -> str:
         return f'{hour:02d}:{minute:02d}'
 
     return ', '.join(
-        (
-            clock(start)
-            if start == end
-            else f'{clock(start)}–{clock(end)}'
-        )
+        (clock(start) if start == end else f'{clock(start)}–{clock(end)}')
         for start, end in intervals
     )
 
@@ -542,9 +529,7 @@ def intensity_level(
     метеорологической опасности.
     """
     low, high = (
-        RAIN_INTENSITY_THRESHOLDS
-        if metric == 'rain'
-        else SNOW_INTENSITY_THRESHOLDS
+        RAIN_INTENSITY_THRESHOLDS if metric == 'rain' else SNOW_INTENSITY_THRESHOLDS
     )
 
     labels = (
@@ -593,11 +578,7 @@ def get_intensity_intervals(
         metric,
     ):
         if metric == 'rain':
-            shower = (
-                showers[index]
-                if index < len(showers)
-                else None
-            )
+            shower = showers[index] if index < len(showers) else None
 
             if value is None and shower is None:
                 continue
@@ -613,11 +594,13 @@ def get_intensity_intervals(
             amount = value
 
         if amount > 0:
-            observations.append((
-                moment,
-                intensity_level(amount, metric, language),
-                amount,
-            ))
+            observations.append(
+                (
+                    moment,
+                    intensity_level(amount, metric, language),
+                    amount,
+                )
+            )
 
     if not observations:
         return []
@@ -631,10 +614,7 @@ def get_intensity_intervals(
     level, peak = observations[0][1:]
 
     for moment, next_level, amount in observations[1:]:
-        if (
-            moment - end == timedelta(hours=1)
-            and next_level == level
-        ):
+        if moment - end == timedelta(hours=1) and next_level == level:
             end = moment
             peak = max(peak, amount)
 
@@ -651,10 +631,7 @@ def get_intensity_intervals(
             (
                 start.strftime('%H:%M')
                 if start == end
-                else (
-                    f'{start.strftime("%H:%M")}'
-                    f'–{end.strftime("%H:%M")}'
-                )
+                else (f'{start.strftime("%H:%M")}–{end.strftime("%H:%M")}')
             ),
             level,
             peak,

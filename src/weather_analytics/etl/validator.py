@@ -33,8 +33,7 @@ def validate_historical_records(
     # Формируем ожидаемый набор календарных дат.
     expected_days = (end_date - start_date).days + 1
     expected_dates = {
-        start_date + timedelta(days=offset)
-        for offset in range(expected_days)
+        start_date + timedelta(days=offset) for offset in range(expected_days)
     }
 
     actual_dates = [record.get('weather_date') for record in daily_records]
@@ -65,19 +64,13 @@ def validate_historical_records(
 
     # Формируем ожидаемые почасовые метки в UTC.
     # В UTC переходов между летним и зимним временем нет.
-    expected_hours = int(
-        (end_utc - start_utc).total_seconds() // 3600
-    )
+    expected_hours = int((end_utc - start_utc).total_seconds() // 3600)
 
     expected_timestamps = {
-        start_utc + timedelta(hours=offset)
-        for offset in range(expected_hours)
+        start_utc + timedelta(hours=offset) for offset in range(expected_hours)
     }
 
-    actual_timestamps = [
-        record.get('weather_time')
-        for record in hourly_records
-    ]
+    actual_timestamps = [record.get('weather_time') for record in hourly_records]
 
     # Проверяем количество, уникальность и непрерывность часов.
     if (

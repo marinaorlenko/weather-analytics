@@ -45,7 +45,9 @@ class City(Base):
     )
 
     city_id: Mapped[int] = mapped_column(
-        Integer, Identity(always=True), primary_key=True,
+        Integer,
+        Identity(always=True),
+        primary_key=True,
     )
     name: Mapped[str] = mapped_column(String(150))
     country: Mapped[str] = mapped_column(String(150))
@@ -53,7 +55,8 @@ class City(Base):
     longitude: Mapped[float] = mapped_column(Double)
     timezone: Mapped[str] = mapped_column(String(100))
     is_active: Mapped[bool] = mapped_column(
-        Boolean, server_default=text('true'),
+        Boolean,
+        server_default=text('true'),
     )
 
 
@@ -89,7 +92,8 @@ class HistoricalDaily(Base):
     shortwave_radiation_sum: Mapped[float | None] = mapped_column(REAL)
     et0_fao_evapotranspiration: Mapped[float | None] = mapped_column(REAL)
     loaded_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=text('now()'),
+        DateTime(timezone=True),
+        server_default=text('now()'),
     )
 
 
@@ -131,7 +135,8 @@ class HistoricalHourly(Base):
     vapour_pressure_deficit: Mapped[float | None] = mapped_column(REAL)
     is_day: Mapped[bool | None] = mapped_column(Boolean)
     loaded_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=text('now()'),
+        DateTime(timezone=True),
+        server_default=text('now()'),
     )
 
 
@@ -152,18 +157,23 @@ class ETLRun(Base):
     )
 
     run_id: Mapped[int] = mapped_column(
-        BigInteger, Identity(always=True), primary_key=True,
+        BigInteger,
+        Identity(always=True),
+        primary_key=True,
     )
     pipeline: Mapped[str] = mapped_column(String(100))
     started_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=text('now()'),
+        DateTime(timezone=True),
+        server_default=text('now()'),
     )
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     status: Mapped[str] = mapped_column(
-        String(20), server_default=text("'running'"),
+        String(20),
+        server_default=text("'running'"),
     )
     rows_loaded: Mapped[int] = mapped_column(
-        Integer, server_default=text('0'),
+        Integer,
+        server_default=text('0'),
     )
     error_message: Mapped[str | None] = mapped_column(Text)
 
@@ -181,7 +191,8 @@ class ForecastDaily(Base):
     forecast_date: Mapped[date] = mapped_column(Date)
     fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     forecast_run_id: Mapped[int | None] = mapped_column(
-        BigInteger, ForeignKey('etl_runs.run_id'),
+        BigInteger,
+        ForeignKey('etl_runs.run_id'),
     )
     weather_code: Mapped[int | None] = mapped_column(SmallInteger)
     temperature_mean: Mapped[float | None] = mapped_column(REAL)
@@ -223,7 +234,8 @@ class ForecastHourly(Base):
     forecast_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     forecast_run_id: Mapped[int | None] = mapped_column(
-        BigInteger, ForeignKey('etl_runs.run_id'),
+        BigInteger,
+        ForeignKey('etl_runs.run_id'),
     )
     temperature: Mapped[float | None] = mapped_column(REAL)
     humidity: Mapped[int | None] = mapped_column(SmallInteger)
@@ -276,7 +288,8 @@ class ForecastECMWFHourly(Base):
     forecast_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     forecast_run_id: Mapped[int | None] = mapped_column(
-        BigInteger, ForeignKey('etl_runs.run_id'),
+        BigInteger,
+        ForeignKey('etl_runs.run_id'),
     )
     precipitation_type: Mapped[float | None] = mapped_column(REAL)
     snowfall_water_equivalent: Mapped[float | None] = mapped_column(REAL)
@@ -291,9 +304,7 @@ class ETLState(Base):
     """Состояние загрузки исторических данных."""
 
     __tablename__ = 'etl_state'
-    __table_args__ = (
-        PrimaryKeyConstraint('pipeline', 'city_id'),
-    )
+    __table_args__ = (PrimaryKeyConstraint('pipeline', 'city_id'),)
 
     pipeline: Mapped[str] = mapped_column(String(100))
     city_id: Mapped[int] = mapped_column(Integer, ForeignKey('cities.city_id'))
@@ -302,5 +313,6 @@ class ETLState(Base):
     )
     last_loaded_date: Mapped[date | None] = mapped_column(Date)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=text('now()'),
+        DateTime(timezone=True),
+        server_default=text('now()'),
     )

@@ -53,7 +53,7 @@ class WeatherRepository:
         Raises:
             RuntimeError: Если PostgreSQL не вернул идентификатор города.
         """
-        query = '''
+        query = """
             INSERT INTO cities (
                 name,
                 country,
@@ -74,7 +74,7 @@ class WeatherRepository:
                 longitude = EXCLUDED.longitude,
                 timezone = EXCLUDED.timezone
             RETURNING city_id;
-        '''
+        """
 
         params = {
             'name': location.name,
@@ -155,8 +155,7 @@ class WeatherRepository:
                 )
 
         logger.info(
-            'Погодные данные сохранены: таблица=%s, '
-            'city_id=%s, записей=%s',
+            'Погодные данные сохранены: таблица=%s, city_id=%s, записей=%s',
             table,
             city_id,
             len(records),
@@ -268,9 +267,9 @@ class WeatherRepository:
         # Название таблицы передаётся через безопасный SQL Identifier.
         # Значение city_id остаётся параметром запроса.
 
-        query = sql.SQL(
-            'SELECT COUNT(*) FROM {} WHERE city_id = %s'
-        ).format(sql.Identifier(table))
+        query = sql.SQL('SELECT COUNT(*) FROM {} WHERE city_id = %s').format(
+            sql.Identifier(table)
+        )
 
         with psycopg.connect(**self.connection_params) as connection:
             with connection.cursor() as cursor:
@@ -308,7 +307,7 @@ class WeatherRepository:
         """
         # Оба показателя получаем одним запросом,
         # чтобы не создавать два отдельных подключения.
-        query = '''
+        query = """
             SELECT
                 (SELECT COUNT(*)
                  FROM forecast_daily
@@ -316,7 +315,7 @@ class WeatherRepository:
                 (SELECT COUNT(*)
                  FROM forecast_hourly
                  WHERE city_id = %(city_id)s);
-        '''
+        """
 
         with psycopg.connect(**self.connection_params) as connection:
             with connection.cursor() as cursor:

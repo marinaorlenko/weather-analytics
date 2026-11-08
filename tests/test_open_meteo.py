@@ -147,11 +147,7 @@ def test_get_historical_success(
 ) -> None:
     """Проверяет запросы и получение исторических данных."""
 
-    temperature_key = (
-        'temperature_2m_max'
-        if data_key == 'daily'
-        else 'temperature_2m'
-    )
+    temperature_key = 'temperature_2m_max' if data_key == 'daily' else 'temperature_2m'
 
     def handler(request: httpx.Request) -> httpx.Response:
         """Проверяет параметры запроса и возвращает историю."""

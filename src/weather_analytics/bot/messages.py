@@ -32,13 +32,9 @@ MESSAGES = {
             '/language — сменить язык'
         ),
         'no_city': (
-            'Не удалось определить город. '
-            'Например: «Температура завтра в Москве».'
+            'Не удалось определить город. Например: «Температура завтра в Москве».'
         ),
-        'not_found': (
-            'Не нашёл город «{city}». '
-            'Уточни название или укажи страну.'
-        ),
+        'not_found': ('Не нашёл город «{city}». Уточни название или укажи страну.'),
         'suggestions': (
             'Не нашёл точного совпадения для «{city}». '
             'Возможно, ты ищешь один из этих городов:'
@@ -47,37 +43,15 @@ MESSAGES = {
             'Не смог уверенно выделить город из запроса. '
             'Попробуй: «Погода завтра в Москве».'
         ),
-        'ambiguous': (
-            'Нашлось несколько мест. Выбери нужное:'
-        ),
-        'error': (
-            'Сейчас не удалось получить погодные данные. '
-            'Попробуй позже.'
-        ),
-        'future_range': (
-            'Прогноз доступен максимум на 16 дней вперёд.'
-        ),
-        'past_range': (
-            'Для настолько ранней даты данные недоступны.'
-        ),
-        'mixed_range': (
-            'Период пересекает прошлые и будущие дни; '
-            'уточни дату.'
-        ),
-        'invalid_date': (
-            'Не удалось распознать дату. '
-            'Например: 2026-11-03.'
-        ),
-        'no_data': (
-            'По этому показателю данных нет.'
-        ),
-        'lang': (
-            '🌍 Выбери язык / Choose your language:'
-        ),
-        'language_set': (
-            '🇷🇺 Русский язык выбран!'
-        ),
-
+        'ambiguous': ('Нашлось несколько мест. Выбери нужное:'),
+        'error': ('Сейчас не удалось получить погодные данные. Попробуй позже.'),
+        'future_range': ('Прогноз доступен максимум на 16 дней вперёд.'),
+        'past_range': ('Для настолько ранней даты данные недоступны.'),
+        'mixed_range': ('Период пересекает прошлые и будущие дни; уточни дату.'),
+        'invalid_date': ('Не удалось распознать дату. Например: 2026-11-03.'),
+        'no_data': ('По этому показателю данных нет.'),
+        'lang': ('🌍 Выбери язык / Choose your language:'),
+        'language_set': ('🇷🇺 Русский язык выбран!'),
         # Уточнение года для календарной даты без года.
         'year_required': (
             '📅 За какой год показать погоду '
@@ -85,23 +59,11 @@ MESSAGES = {
             'Выбери год или укажи другой.'
         ),
         'year_other': '✏️ Другой год',
-        'year_input': (
-            '✏️ Введи нужный год четырьмя цифрами, '
-            'например 2022.'
-        ),
-        'year_invalid': (
-            'Введи год четырьмя цифрами, например 2024.'
-        ),
-        'year_invalid_date': (
-            'Такой даты не существует. '
-            'Выбери другой год.'
-        ),
+        'year_input': ('✏️ Введи нужный год четырьмя цифрами, например 2022.'),
+        'year_invalid': ('Введи год четырьмя цифрами, например 2024.'),
+        'year_invalid_date': ('Такой даты не существует. Выбери другой год.'),
         'year_selected': '📅 Выбран год: {year}',
-        'year_expired': (
-            'Этот запрос уже неактуален. '
-            'Отправь новый вопрос о погоде.'
-        ),
-
+        'year_expired': ('Этот запрос уже неактуален. Отправь новый вопрос о погоде.'),
         'introduction': (
             '🌪️ Знакомься, я Stormy!\n\n'
             'Я помогу узнать погоду в городах по всему миру. '
@@ -123,7 +85,6 @@ MESSAGES = {
             'Данные: Open-Meteo.'
         ),
     },
-
     'en': {
         'welcome': (
             '🌪️ STORMY\n\n'
@@ -148,51 +109,27 @@ MESSAGES = {
             '/language — change language'
         ),
         'no_city': (
-            'I could not identify the city. '
-            'Try: “Temperature in London tomorrow”.'
+            'I could not identify the city. Try: “Temperature in London tomorrow”.'
         ),
         'not_found': (
-            'I could not find «{city}». '
-            'Please check the name or specify the country.'
+            'I could not find «{city}». Please check the name or specify the country.'
         ),
-        'suggestions': (
-            'No exact match for «{city}». Did you mean:'
-        ),
+        'suggestions': ('No exact match for «{city}». Did you mean:'),
         'parse_city': (
             'I could not identify the city in your question. '
             'Try: “Weather tomorrow in London”.'
         ),
-        'ambiguous': (
-            'I found several places. Choose one:'
-        ),
-        'error': (
-            'Weather data is temporarily unavailable. '
-            'Please try again later.'
-        ),
-        'future_range': (
-            'Forecasts are available up to 16 days ahead.'
-        ),
-        'past_range': (
-            'Historical data is unavailable for such an early date.'
-        ),
+        'ambiguous': ('I found several places. Choose one:'),
+        'error': ('Weather data is temporarily unavailable. Please try again later.'),
+        'future_range': ('Forecasts are available up to 16 days ahead.'),
+        'past_range': ('Historical data is unavailable for such an early date.'),
         'mixed_range': (
-            'This period spans past and future days. '
-            'Please specify a date.'
+            'This period spans past and future days. Please specify a date.'
         ),
-        'invalid_date': (
-            'I could not understand the date. '
-            'Try 2026-11-03.'
-        ),
-        'no_data': (
-            'No data is available for this metric.'
-        ),
-        'lang': (
-            '🌍 Choose your language / Выбери язык:'
-        ),
-        'language_set': (
-            '🇬🇧 English selected!'
-        ),
-
+        'invalid_date': ('I could not understand the date. Try 2026-11-03.'),
+        'no_data': ('No data is available for this metric.'),
+        'lang': ('🌍 Choose your language / Выбери язык:'),
+        'language_set': ('🇬🇧 English selected!'),
         # Уточнение года для календарной даты без года.
         'year_required': (
             '📅 Which year would you like for '
@@ -200,23 +137,13 @@ MESSAGES = {
             'Choose a year or select another.'
         ),
         'year_other': '✏️ Another year',
-        'year_input': (
-            '✏️ Enter the year using four digits, '
-            'for example 2022.'
-        ),
-        'year_invalid': (
-            'Enter a four-digit year, for example 2024.'
-        ),
-        'year_invalid_date': (
-            'That date does not exist. '
-            'Choose another year.'
-        ),
+        'year_input': ('✏️ Enter the year using four digits, for example 2022.'),
+        'year_invalid': ('Enter a four-digit year, for example 2024.'),
+        'year_invalid_date': ('That date does not exist. Choose another year.'),
         'year_selected': '📅 Selected year: {year}',
         'year_expired': (
-            'This request is no longer active. '
-            'Please send a new weather question.'
+            'This request is no longer active. Please send a new weather question.'
         ),
-
         'introduction': (
             '🌪️ Meet Stormy!\n\n'
             'I’m your personal weather assistant. '

@@ -82,9 +82,7 @@ def load_comparison_history(
         errors='coerce',
     ).dt.normalize()
 
-    return daily.dropna(
-        subset=['weather_date']
-    ).sort_values('weather_date')
+    return daily.dropna(subset=['weather_date']).sort_values('weather_date')
 
 
 def prepare_comparison(
@@ -106,9 +104,7 @@ def prepare_comparison(
         validate='one_to_one',
     )
 
-    return comparison.sort_values(
-        'weather_date'
-    ).reset_index(drop=True)
+    return comparison.sort_values('weather_date').reset_index(drop=True)
 
 
 def show_comparison_kpis(
@@ -118,27 +114,23 @@ def show_comparison_kpis(
     language: str,
 ) -> None:
     """Показывает сводные показатели за общий период наблюдений."""
-    st.subheader(ui(
-        'Сводные показатели',
-        'Summary indicators',
-        language,
-    ))
+    st.subheader(
+        ui(
+            'Сводные показатели',
+            'Summary indicators',
+            language,
+        )
+    )
 
     temperature_data = comparison[
         ['average_temperature_first', 'average_temperature_second']
     ].dropna()
 
-    first_temperature = temperature_data[
-        'average_temperature_first'
-    ].mean()
+    first_temperature = temperature_data['average_temperature_first'].mean()
 
-    second_temperature = temperature_data[
-        'average_temperature_second'
-    ].mean()
+    second_temperature = temperature_data['average_temperature_second'].mean()
 
-    temperature_difference = (
-        first_temperature - second_temperature
-    )
+    temperature_difference = first_temperature - second_temperature
 
     # Для разницы используем только даты, когда известны
     # обе среднесуточные температуры.
@@ -147,43 +139,27 @@ def show_comparison_kpis(
         - comparison['average_temperature_second']
     ).mean()
 
-    first_precipitation = comparison[
-        'precipitation_first'
-    ].sum(min_count=1)
+    first_precipitation = comparison['precipitation_first'].sum(min_count=1)
 
-    second_precipitation = comparison[
-        'precipitation_second'
-    ].sum(min_count=1)
+    second_precipitation = comparison['precipitation_second'].sum(min_count=1)
 
-    first_wind = comparison[
-        'wind_speed_max_first'
-    ].max()
+    first_wind = comparison['wind_speed_max_first'].max()
 
-    second_wind = comparison[
-        'wind_speed_max_second'
-    ].max()
+    second_wind = comparison['wind_speed_max_second'].max()
 
     first_column, second_column, third_column = st.columns(3)
 
     with first_column:
         st.metric(
             ui('Средняя температура', 'Average temperature', language),
-            (
-                f'{first_temperature:.1f} °C'
-                if pd.notna(first_temperature)
-                else '—'
-            ),
+            (f'{first_temperature:.1f} °C' if pd.notna(first_temperature) else '—'),
         )
         st.caption(first_label)
 
     with second_column:
         st.metric(
             ui('Средняя температура', 'Average temperature', language),
-            (
-                f'{second_temperature:.1f} °C'
-                if pd.notna(second_temperature)
-                else '—'
-            ),
+            (f'{second_temperature:.1f} °C' if pd.notna(second_temperature) else '—'),
         )
         st.caption(second_label)
 
@@ -196,28 +172,24 @@ def show_comparison_kpis(
                 else '—'
             ),
         )
-        st.caption(ui(
-            'Первый город относительно второго',
-            'First city relative to second',
-            language,
-        ))
+        st.caption(
+            ui(
+                'Первый город относительно второго',
+                'First city relative to second',
+                language,
+            )
+        )
 
     st.divider()
 
     first_column, second_column = st.columns(2)
 
     with first_column:
-        st.markdown(
-            f'**{ui("Суммарные осадки", "Total precipitation", language)}**'
-        )
+        st.markdown(f'**{ui("Суммарные осадки", "Total precipitation", language)}**')
 
         st.metric(
             first_label,
-            (
-                f'{first_precipitation:.1f} мм'
-                if pd.notna(first_precipitation)
-                else '—'
-            ),
+            (f'{first_precipitation:.1f} мм' if pd.notna(first_precipitation) else '—'),
         )
 
         st.metric(
@@ -230,26 +202,16 @@ def show_comparison_kpis(
         )
 
     with second_column:
-        st.markdown(
-            f'**{ui("Максимальный ветер", "Maximum wind", language)}**'
-        )
+        st.markdown(f'**{ui("Максимальный ветер", "Maximum wind", language)}**')
 
         st.metric(
             first_label,
-            (
-                f'{first_wind:.1f} км/ч'
-                if pd.notna(first_wind)
-                else '—'
-            ),
+            (f'{first_wind:.1f} км/ч' if pd.notna(first_wind) else '—'),
         )
 
         st.metric(
             second_label,
-            (
-                f'{second_wind:.1f} км/ч'
-                if pd.notna(second_wind)
-                else '—'
-            ),
+            (f'{second_wind:.1f} км/ч' if pd.notna(second_wind) else '—'),
         )
 
     st.caption(
@@ -271,41 +233,40 @@ def show_metric_comparison(
 
     # Выбираем единицу измерения для текущего языка интерфейса.
     unit_settings = settings['unit']
-    unit = (
-        unit_settings[language]
-        if isinstance(unit_settings, dict)
-        else unit_settings
-    )
+    unit = unit_settings[language] if isinstance(unit_settings, dict) else unit_settings
 
     first_column = f'{metric}_first'
     second_column = f'{metric}_second'
 
-    chart_data = comparison[
-        ['weather_date', first_column, second_column]
-    ].melt(
-        id_vars='weather_date',
-        value_vars=[first_column, second_column],
-        var_name='city',
-        value_name='value',
-    ).dropna(subset=['value'])
+    chart_data = (
+        comparison[['weather_date', first_column, second_column]]
+        .melt(
+            id_vars='weather_date',
+            value_vars=[first_column, second_column],
+            var_name='city',
+            value_name='value',
+        )
+        .dropna(subset=['value'])
+    )
 
     if chart_data.empty:
-        st.info(ui(
-            'Нет данных для выбранного показателя.',
-            'No data for the selected indicator.',
-            language,
-        ))
+        st.info(
+            ui(
+                'Нет данных для выбранного показателя.',
+                'No data for the selected indicator.',
+                language,
+            )
+        )
         return
 
-    chart_data['city'] = chart_data['city'].map({
-        first_column: first_label,
-        second_column: second_label,
-    })
-
-    chart_data['date_label'] = (
-        chart_data['weather_date']
-        .dt.strftime('%d.%m.%Y')
+    chart_data['city'] = chart_data['city'].map(
+        {
+            first_column: first_label,
+            second_column: second_label,
+        }
     )
+
+    chart_data['date_label'] = chart_data['weather_date'].dt.strftime('%d.%m.%Y')
 
     ticks = get_date_ticks(comparison, 'weather_date')
 
@@ -386,16 +347,10 @@ def render_comparison_tab(
             return
 
         # Сохраняем выбор городов при смене языка.
-        if (
-            st.session_state.get('current_first_city_id')
-            not in city_ids
-        ):
+        if st.session_state.get('current_first_city_id') not in city_ids:
             st.session_state.current_first_city_id = city_ids[0]
 
-        if (
-            st.session_state.get('current_second_city_id')
-            not in city_ids
-        ):
+        if st.session_state.get('current_second_city_id') not in city_ids:
             st.session_state.current_second_city_id = city_ids[1]
 
         first_column, second_column = st.columns(2)
@@ -404,9 +359,7 @@ def render_comparison_tab(
             first_city_id = st.selectbox(
                 translate('first_city', language),
                 options=city_ids,
-                index=city_ids.index(
-                    st.session_state.current_first_city_id
-                ),
+                index=city_ids.index(st.session_state.current_first_city_id),
                 format_func=lambda city_id: city_name(
                     city_records[city_id]['name'],
                     city_records[city_id]['country'],
@@ -419,9 +372,7 @@ def render_comparison_tab(
             second_city_id = st.selectbox(
                 translate('second_city', language),
                 options=city_ids,
-                index=city_ids.index(
-                    st.session_state.current_second_city_id
-                ),
+                index=city_ids.index(st.session_state.current_second_city_id),
                 format_func=lambda city_id: city_name(
                     city_records[city_id]['name'],
                     city_records[city_id]['country'],
@@ -464,9 +415,7 @@ def render_comparison_tab(
             )
 
         except psycopg.Error as error:
-            st.error(
-                f'{translate("db_error", language)}: {error}'
-            )
+            st.error(f'{translate("db_error", language)}: {error}')
             return
 
         if first_history.empty or second_history.empty:
@@ -479,22 +428,26 @@ def render_comparison_tab(
         )
 
         if comparison.empty:
-            st.info(ui(
-                'У выбранных городов нет общих дат наблюдений.',
-                'The selected cities have no common observation dates.',
-                language,
-            ))
+            st.info(
+                ui(
+                    'У выбранных городов нет общих дат наблюдений.',
+                    'The selected cities have no common observation dates.',
+                    language,
+                )
+            )
             return
 
         # -------------------------------------------------
         # Выбор общего периода
         # -------------------------------------------------
 
-        st.subheader(ui(
-            'Период сравнения',
-            'Comparison period',
-            language,
-        ))
+        st.subheader(
+            ui(
+                'Период сравнения',
+                'Comparison period',
+                language,
+            )
+        )
 
         earliest = comparison['weather_date'].min().date()
         latest = comparison['weather_date'].max().date()
@@ -511,11 +464,13 @@ def render_comparison_tab(
             return
 
         if len(selected_dates) != 2:
-            st.info(ui(
-                'Выберите начальную и конечную даты.',
-                'Select the start and end dates.',
-                language,
-            ))
+            st.info(
+                ui(
+                    'Выберите начальную и конечную даты.',
+                    'Select the start and end dates.',
+                    language,
+                )
+            )
             return
 
         start_date, end_date = selected_dates
@@ -528,11 +483,13 @@ def render_comparison_tab(
         ].copy()
 
         if comparison.empty:
-            st.info(ui(
-                'За выбранный период нет общих наблюдений.',
-                'No common observations in the selected period.',
-                language,
-            ))
+            st.info(
+                ui(
+                    'За выбранный период нет общих наблюдений.',
+                    'No common observations in the selected period.',
+                    language,
+                )
+            )
             return
 
         # -------------------------------------------------
@@ -551,11 +508,13 @@ def render_comparison_tab(
         # -------------------------------------------------
 
         st.divider()
-        st.subheader(ui(
-            'Сравнение погодных показателей',
-            'Weather indicator comparison',
-            language,
-        ))
+        st.subheader(
+            ui(
+                'Сравнение погодных показателей',
+                'Weather indicator comparison',
+                language,
+            )
+        )
 
         selected_metric = st.selectbox(
             ui('Показатель', 'Indicator', language),
@@ -576,11 +535,13 @@ def render_comparison_tab(
         # Исходные данные
         # -------------------------------------------------
 
-        with st.expander(ui(
-            'Данные сравнения',
-            'Comparison data',
-            language,
-        )):
+        with st.expander(
+            ui(
+                'Данные сравнения',
+                'Comparison data',
+                language,
+            )
+        ):
             st.dataframe(
                 comparison,
                 hide_index=True,

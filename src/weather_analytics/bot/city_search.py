@@ -90,7 +90,8 @@ def unique_named_cities(cities: list[City]) -> list[City]:
             (city.get('name') or '').casefold(),
             (city.get('admin1') or '').casefold(),
             (city.get('country') or '').casefold(),
-        ) not in populated_keys
+        )
+        not in populated_keys
     ]
 
 
@@ -135,16 +136,11 @@ def search_prefixes(name: str) -> list[str]:
         ),
     )
 
-    prefixes = (
-        name[:length].strip(' -')
-        for length in lengths
-    )
+    prefixes = (name[:length].strip(' -') for length in lengths)
 
-    return list(dict.fromkeys(
-        prefix
-        for prefix in prefixes
-        if len(prefix) >= MIN_PREFIX_LENGTH
-    ))
+    return list(
+        dict.fromkeys(prefix for prefix in prefixes if len(prefix) >= MIN_PREFIX_LENGTH)
+    )
 
 
 def typo_variants(name: str) -> list[str]:
@@ -161,12 +157,7 @@ def typo_variants(name: str) -> list[str]:
         if name[index] == name[index + 1]:
             continue
 
-        variant = (
-            name[:index]
-            + name[index + 1]
-            + name[index]
-            + name[index + 2:]
-        )
+        variant = name[:index] + name[index + 1] + name[index] + name[index + 2 :]
         variants.append(variant)
 
     # Проверяем распространённые замены русских гласных.
@@ -174,17 +165,9 @@ def typo_variants(name: str) -> list[str]:
         replacement = COMMON_REPLACEMENTS.get(letter.casefold())
 
         if replacement:
-            variants.append(
-                name[:index]
-                + replacement
-                + name[index + 1:]
-            )
+            variants.append(name[:index] + replacement + name[index + 1 :])
 
-    return list(dict.fromkeys(
-        variant
-        for variant in variants
-        if variant != name
-    ))
+    return list(dict.fromkeys(variant for variant in variants if variant != name))
 
 
 def rank_candidates(
@@ -199,43 +182,34 @@ def rank_candidates(
     scored = []
 
     for city in candidates.values():
-        similarity = max(
-            city_similarity(variant, city)
-            for variant in variants
-        )
+        similarity = max(city_similarity(variant, city) for variant in variants)
 
         if similarity >= MIN_SIMILARITY:
-            scored.append((
-                similarity,
-                city_population(city),
-                city,
-            ))
+            scored.append(
+                (
+                    similarity,
+                    city_population(city),
+                    city,
+                )
+            )
 
     if not scored:
         return []
 
-    best_similarity = max(
-        similarity
-        for similarity, _, _ in scored
-    )
+    best_similarity = max(similarity for similarity, _, _ in scored)
 
     # Население влияет на порядок только у кандидатов,
     # находящихся достаточно близко к лучшему совпадению.
     scored.sort(
         key=lambda item: (
             item[0] >= best_similarity - SIMILARITY_TOLERANCE,
-            item[1]
-            if item[0] >= best_similarity - SIMILARITY_TOLERANCE
-            else item[0],
+            item[1] if item[0] >= best_similarity - SIMILARITY_TOLERANCE else item[0],
             item[0],
         ),
         reverse=True,
     )
 
-    return [
-        city
-        for _, _, city in scored[:SUGGESTION_LIMIT]
-    ]
+    return [city for _, _, city in scored[:SUGGESTION_LIMIT]]
 
 
 class CitySearchService:
@@ -252,10 +226,7 @@ class CitySearchService:
     ) -> list[City]:
         """Возвращает точные совпадения названия города."""
         variants = city_search_variants(name)
-        exact_names = {
-            variant.casefold()
-            for variant in variants
-        }
+        exact_names = {variant.casefold() for variant in variants}
         candidates: dict[CityKey, City] = {}
 
         for variant in variants:
@@ -269,8 +240,7 @@ class CitySearchService:
         exact = [
             city
             for city in candidates.values()
-            if (city.get('name') or '').casefold()
-            in exact_names
+            if (city.get('name') or '').casefold() in exact_names
         ]
 
         exact.sort(
@@ -290,11 +260,11 @@ class CitySearchService:
         candidates: dict[CityKey, City] = {}
 
         # Сначала собираем кандидатов по префиксам.
-        prefixes = list(dict.fromkeys(
-            prefix
-            for variant in variants
-            for prefix in search_prefixes(variant)
-        ))
+        prefixes = list(
+            dict.fromkeys(
+                prefix for variant in variants for prefix in search_prefixes(variant)
+            )
+        )
 
         for prefix in prefixes:
             cities = self.client.find_locations(
@@ -305,11 +275,13 @@ class CitySearchService:
             add_candidates(candidates, cities)
 
         # Затем проверяем ограниченное число исправлений.
-        fuzzy_names = list(dict.fromkeys(
-            corrected
-            for variant in variants
-            for corrected in typo_variants(variant)
-        ))
+        fuzzy_names = list(
+            dict.fromkeys(
+                corrected
+                for variant in variants
+                for corrected in typo_variants(variant)
+            )
+        )
 
         for corrected in fuzzy_names[:MAX_FUZZY_REQUESTS]:
             cities = self.client.find_locations(
@@ -340,11 +312,7 @@ class CitySearchService:
         exact = self.find_cities(name, language)
 
         # Для распространённых городов точного поиска достаточно.
-        if (
-            exact
-            and city_population(exact[0])
-            >= MIN_EXACT_CITY_POPULATION
-        ):
+        if exact and city_population(exact[0]) >= MIN_EXACT_CITY_POPULATION:
             return exact[:CITY_SELECTION_LIMIT], False
 
         suggestions = self.suggest_cities(name, language)
@@ -359,7 +327,7 @@ class CitySearchService:
         if exact:
             add_candidates(
                 candidates,
-                suggestions[:CITY_SELECTION_LIMIT - 1],
+                suggestions[: CITY_SELECTION_LIMIT - 1],
             )
             add_candidates(candidates, exact[:1])
         else:
