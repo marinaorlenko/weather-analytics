@@ -60,7 +60,8 @@ class WeatherETL:
         loader = WeatherLoader()
         transformer = WeatherTransformer()
 
-        locations = CityReader('data/capitals.csv').read()
+        # locations = CityReader('data/capitals.csv').read()
+        locations = CityReader('data/stormy_cities.csv').read()
 
         # Выборка городов определяется названиями из справочника.
         if city_names is not None:

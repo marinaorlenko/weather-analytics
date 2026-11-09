@@ -1,0 +1,12 @@
+country,iso2,capital,latitude,longitude,timezone,territory_type,verification
+Argentina,AR,Buenos Aires,-34.607568,-58.437089,America/Argentina/Buenos_Aires,sovereign,needs_review
+Australia,AU,Canberra,-35.2809,149.13,Australia/Sydney,sovereign,corrected
+Egypt,EG,Cairo,30.048819,31.243666,Africa/Cairo,sovereign,source
+France,FR,Paris,48.856697,2.351462,Europe/Paris,sovereign,source
+Japan,JP,Tokyo,35.682839,139.759455,Asia/Tokyo,sovereign,source
+Russia,RU,Moscow,55.7558,37.6173,Europe/Moscow,sovereign,corrected
+Singapore,SG,Singapore,1.357107,103.819499,Asia/Singapore,sovereign,source
+United Arab Emirates,AE,Abu Dhabi,24.4539,54.3773,Asia/Dubai,sovereign,corrected
+United Kingdom,GB,London,51.507322,-0.127647,Europe/London,sovereign,source
+United States,US,"Washington, D.C.",38.9072,-77.0369,America/New_York,sovereign,corrected
+United Arab Emirates,AE,Dubai,25.2048,55.2708,Asia/Dubai,non-capital,manually_added
