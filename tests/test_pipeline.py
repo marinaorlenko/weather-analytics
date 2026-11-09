@@ -139,7 +139,8 @@ def test_run_initializes_database(etl, dependencies) -> None:
         )
 
     dependencies['initializer'].return_value.initialize.assert_called_once_with()
-    dependencies['reader'].assert_called_once_with('data/capitals.csv')
+    # dependencies['reader'].assert_called_once_with('data/capitals.csv')
+    dependencies['reader'].assert_called_once_with('data/stormy_cities.csv')
 
 
 def test_run_selects_cities_by_name(etl, dependencies, locations) -> None:
