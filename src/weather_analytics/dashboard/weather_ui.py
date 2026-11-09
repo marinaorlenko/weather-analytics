@@ -120,10 +120,14 @@ def select_weather_day(
     label_en: str,
 ):
     """Показывает календарь и возвращает выбранную доступную дату."""
-    dates = pd.to_datetime(
-        dataframe[date_column],
-        errors='coerce',
-    ).dropna().dt.date
+    dates = (
+        pd.to_datetime(
+            dataframe[date_column],
+            errors='coerce',
+        )
+        .dropna()
+        .dt.date
+    )
 
     if dates.empty:
         return None
@@ -133,19 +137,14 @@ def select_weather_day(
     earliest = min(available_dates)
     latest = max(available_dates)
 
-    default_date = (
-        earliest if key.startswith('forecast') else latest
-    )
+    default_date = earliest if key.startswith('forecast') else latest
 
     # При переключении города или периода ранее выбранная дата
     # может оказаться за пределами нового диапазона.
     if key in st.session_state:
         current = st.session_state[key]
 
-        if (
-            not isinstance(current, datetime)
-            and current in available_dates
-        ):
+        if not isinstance(current, datetime) and current in available_dates:
             default_date = current
 
         if current not in available_dates:
@@ -165,8 +164,7 @@ def select_weather_day(
     if selected not in available_dates:
         st.warning(
             ui(
-                'За выбранную дату наблюдения отсутствуют. '
-                'Выберите другую дату.',
+                'За выбранную дату наблюдения отсутствуют. Выберите другую дату.',
                 'No observations are available for this date. '
                 'Please select another date.',
                 language,
@@ -184,9 +182,7 @@ def show_wind_compass(
     key: str = 'history_wind_compass_day',
 ) -> None:
     """Показывает направление и максимальную скорость ветра за выбранный день."""
-    valid = history.dropna(
-        subset=['wind_direction_dominant']
-    ).copy()
+    valid = history.dropna(subset=['wind_direction_dominant']).copy()
 
     if valid.empty:
         st.info(
@@ -210,18 +206,14 @@ def show_wind_compass(
     if selected is None:
         return
 
-    row = valid.loc[
-        valid[date_column].dt.date == selected
-    ].iloc[0]
+    row = valid.loc[valid[date_column].dt.date == selected].iloc[0]
 
     direction = float(row['wind_direction_dominant']) % 360
     direction_label = wind_direction(direction, language)
 
     speed = row.get('wind_speed_max')
     speed_text = (
-        f'{float(speed):.1f} {ui("км/ч", "km/h", language)}'
-        if pd.notna(speed)
-        else '—'
+        f'{float(speed):.1f} {ui("км/ч", "km/h", language)}' if pd.notna(speed) else '—'
     )
 
     left, right = st.columns(
@@ -232,9 +224,7 @@ def show_wind_compass(
     with left:
         # Компас статичен: сторонние графические библиотеки не нужны.
         compass_labels = (
-            ('С', 'В', 'Ю', 'З')
-            if language == 'ru'
-            else ('N', 'E', 'S', 'W')
+            ('С', 'В', 'Ю', 'З') if language == 'ru' else ('N', 'E', 'S', 'W')
         )
 
         marks = ''.join(
@@ -354,9 +344,7 @@ def show_sun_and_moon(
     if selected is None:
         return
 
-    row = history.loc[
-        history[date_column].dt.date == selected
-    ].iloc[0]
+    row = history.loc[history[date_column].dt.date == selected].iloc[0]
 
     sunrise = row.get('sunrise')
     sunset = row.get('sunset')
@@ -377,9 +365,7 @@ def show_sun_and_moon(
     # по времени восхода и заката.
     if duration == '—' and pd.notna(sunrise) and pd.notna(sunset):
         minutes = round(
-            (
-                pd.Timestamp(sunset) - pd.Timestamp(sunrise)
-            ).total_seconds() / 60
+            (pd.Timestamp(sunset) - pd.Timestamp(sunrise)).total_seconds() / 60
         )
 
         if minutes >= 0:
@@ -424,16 +410,13 @@ def show_sun_and_moon(
         st.markdown(f'**{phase}**')
 
         st.caption(
-            f'{ui("Освещённость", "Illumination", language)}: '
-            f'≈ {illumination:.0f}%'
+            f'{ui("Освещённость", "Illumination", language)}: ≈ {illumination:.0f}%'
         )
 
         st.caption(
             ui(
-                'Приблизительный астрономический расчёт, '
-                'не данные погодного API.',
-                'Approximate astronomical calculation, '
-                'not weather API data.',
+                'Приблизительный астрономический расчёт, не данные погодного API.',
+                'Approximate astronomical calculation, not weather API data.',
                 language,
             )
         )

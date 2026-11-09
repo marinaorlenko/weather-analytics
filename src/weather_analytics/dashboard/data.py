@@ -34,9 +34,7 @@ def get_utc_date_bounds(
     # Прибавляем календарный день до локализации, чтобы корректно
     # учитывать переходы на летнее и зимнее время.
     start_local = pd.Timestamp(start_date).tz_localize(timezone)
-    end_local = (
-        pd.Timestamp(end_date) + pd.Timedelta(days=1)
-    ).tz_localize(timezone)
+    end_local = (pd.Timestamp(end_date) + pd.Timedelta(days=1)).tz_localize(timezone)
 
     return start_local.tz_convert('UTC'), end_local.tz_convert('UTC')
 
@@ -421,9 +419,7 @@ def load_extra_metrics(
             )
 
             query += f' AND {time_column} >= %s AND {time_column} < %s'
-            params.extend(
-                [start_utc.to_pydatetime(), end_utc.to_pydatetime()]
-            )
+            params.extend([start_utc.to_pydatetime(), end_utc.to_pydatetime()])
 
     query += f' ORDER BY {time_column}'
 

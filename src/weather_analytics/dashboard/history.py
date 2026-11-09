@@ -67,9 +67,7 @@ def aggregate_daily_data(
     # если за весь месяц или год нет ни одного наблюдения.
     available = {
         column: (
-            (lambda values: values.sum(min_count=1))
-            if method == 'sum'
-            else method
+            (lambda values: values.sum(min_count=1)) if method == 'sum' else method
         )
         for column, method in available.items()
     }
@@ -77,10 +75,7 @@ def aggregate_daily_data(
     # Группируем по календарным месяцам или годам.
     # Каждому показателю соответствует собственный метод агрегации.
     result = (
-        result.set_index(date_column)
-        .resample(frequency)
-        .agg(available)
-        .reset_index()
+        result.set_index(date_column).resample(frequency).agg(available).reset_index()
     )
 
     # Не показываем интервалы, в которых отсутствуют все показатели.
@@ -510,11 +505,7 @@ def render_history_tab(
 
     second.metric(
         ui('Средняя температура', 'Average temperature', language),
-        (
-            f'{average_temperature:.1f} °C'
-            if pd.notna(average_temperature)
-            else '—'
-        ),
+        (f'{average_temperature:.1f} °C' if pd.notna(average_temperature) else '—'),
     )
 
     precipitation_sum = history['precipitation'].sum(min_count=1)
@@ -692,7 +683,7 @@ def render_history_tab(
     )
 
     hourly = pd.DataFrame()
-    
+
     if hourly_period is not None:
         hourly_start, hourly_end = hourly_period
 

@@ -76,8 +76,7 @@ class WeatherETL:
 
             if missing:
                 raise ValueError(
-                    'В справочнике отсутствуют города: '
-                    + ', '.join(sorted(missing))
+                    'В справочнике отсутствуют города: ' + ', '.join(sorted(missing))
                 )
 
             locations = [
@@ -101,9 +100,7 @@ class WeatherETL:
 
         # Один ограничитель на весь исторический запуск.
         # Он не сбрасывается при смене месяца или города.
-        rate_limiter = RequestRateLimiter(
-            get_settings().etl_request_delay
-        )
+        rate_limiter = RequestRateLimiter(get_settings().etl_request_delay)
 
         def register_period() -> None:
             """Учитывает очередной успешно сохранённый период."""
@@ -128,9 +125,7 @@ class WeatherETL:
             if mode in ('local', 'initial', 'daily', 'batch'):
                 try:
                     remaining = (
-                        None
-                        if max_periods is None
-                        else max_periods - processed_periods
+                        None if max_periods is None else max_periods - processed_periods
                     )
 
                     # Метод сохраняет прежнее возвращаемое значение.
@@ -201,9 +196,7 @@ class WeatherETL:
         )
 
         if failed:
-            raise RuntimeError(
-                f'ETL завершён с ошибками для {failed} городов'
-            )
+            raise RuntimeError(f'ETL завершён с ошибками для {failed} городов')
 
     def _run_historical(
         self,
@@ -246,9 +239,7 @@ class WeatherETL:
             try:
                 # Все клиенты используют общий ограничитель,
                 # полученный от основного метода run().
-                with OpenMeteoClient(
-                    rate_limiter=rate_limiter
-                ) as client:
+                with OpenMeteoClient(rate_limiter=rate_limiter) as client:
                     extractor = WeatherExtractor(client)
                     data = extractor.extract_historical(
                         location,
