@@ -8,10 +8,15 @@
 """
 
 import logging
+from collections.abc import Callable
 from datetime import UTC, date, datetime, timedelta
 from typing import Literal
 
+import httpx
+
 from weather_analytics.api import OpenMeteoClient
+from weather_analytics.api.client import RequestRateLimiter
+from weather_analytics.config import get_settings
 from weather_analytics.db.initializer import DatabaseInitializer
 from weather_analytics.etl.city_reader import CityReader
 from weather_analytics.etl.date_utils import split_date_range
@@ -71,7 +76,8 @@ class WeatherETL:
 
             if missing:
                 raise ValueError(
-                    'В справочнике отсутствуют города: ' + ', '.join(sorted(missing))
+                    'В справочнике отсутствуют города: '
+                    + ', '.join(sorted(missing))
                 )
 
             locations = [
@@ -93,6 +99,17 @@ class WeatherETL:
         failed = 0
         processed_periods = 0
 
+        # Один ограничитель на весь исторический запуск.
+        # Он не сбрасывается при смене месяца или города.
+        rate_limiter = RequestRateLimiter(
+            get_settings().etl_request_delay
+        )
+
+        def register_period() -> None:
+            """Учитывает очередной успешно сохранённый период."""
+            nonlocal processed_periods
+            processed_periods += 1
+
         for location in locations:
             # Лимит общий для всех городов.
             if max_periods is not None and processed_periods >= max_periods:
@@ -111,33 +128,44 @@ class WeatherETL:
             if mode in ('local', 'initial', 'daily', 'batch'):
                 try:
                     remaining = (
-                        None if max_periods is None else max_periods - processed_periods
+                        None
+                        if max_periods is None
+                        else max_periods - processed_periods
                     )
 
-                    if remaining is None:
-                        # Сохраняем прежний вызов для существующих режимов ETL.
-                        result = self._run_historical(
-                            loader,
-                            transformer,
-                            location,
-                            city_id,
-                            start_date,
-                            end_date,
-                        )
-                    else:
-                        # В режиме batch передаём ограничение периодов.
-                        result = self._run_historical(
-                            loader,
-                            transformer,
-                            location,
-                            city_id,
-                            start_date,
-                            end_date,
-                            remaining,
-                        )
+                    # Метод сохраняет прежнее возвращаемое значение.
+                    # Callback позволяет учитывать успешные месяцы
+                    # даже при ошибке в следующем периоде.
+                    self._run_historical(
+                        loader,
+                        transformer,
+                        location,
+                        city_id,
+                        start_date,
+                        end_date,
+                        max_periods=remaining,
+                        rate_limiter=rate_limiter,
+                        on_period_saved=register_period,
+                    )
 
-                    if result is not None:
-                        processed_periods += result
+                except httpx.HTTPStatusError as error:
+                    city_success = False
+
+                    if error.response.status_code == 429:
+                        logger.error(
+                            'Open-Meteo вернул HTTP 429. '
+                            'Историческая загрузка остановлена: '
+                            'город=%s, сохранено периодов=%s',
+                            location.name,
+                            processed_periods,
+                        )
+                        raise
+
+                    logger.exception(
+                        'Ошибка исторического ETL: %s',
+                        location.name,
+                    )
+
                 except Exception:
                     city_success = False
                     logger.exception(
@@ -173,7 +201,9 @@ class WeatherETL:
         )
 
         if failed:
-            raise RuntimeError(f'ETL завершён с ошибками для {failed} городов')
+            raise RuntimeError(
+                f'ETL завершён с ошибками для {failed} городов'
+            )
 
     def _run_historical(
         self,
@@ -184,6 +214,8 @@ class WeatherETL:
         start_date: date,
         end_date: date,
         max_periods: int | None = None,
+        rate_limiter: RequestRateLimiter | None = None,
+        on_period_saved: Callable[[], None] | None = None,
     ) -> int:
         """Загружает историю и возвращает число сохранённых периодов."""
         last_loaded_date = loader.get_last_loaded_date(city_id)
@@ -212,7 +244,11 @@ class WeatherETL:
             run_id = loader.start_run('historical')
 
             try:
-                with OpenMeteoClient() as client:
+                # Все клиенты используют общий ограничитель,
+                # полученный от основного метода run().
+                with OpenMeteoClient(
+                    rate_limiter=rate_limiter
+                ) as client:
                     extractor = WeatherExtractor(client)
                     data = extractor.extract_historical(
                         location,
@@ -247,6 +283,11 @@ class WeatherETL:
                 )
 
                 processed += 1
+
+                # Учитываем период только после успешного
+                # завершения транзакции PostgreSQL.
+                if on_period_saved is not None:
+                    on_period_saved()
 
                 logger.info(
                     'История: %s, %s — %s, записей=%s',

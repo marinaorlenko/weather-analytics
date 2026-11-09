@@ -19,7 +19,9 @@ RUN python -m pip install --no-cache-dir .
 COPY alembic.ini ./
 COPY alembic/ ./alembic/
 COPY sql/ ./sql/
+# Справочники городов для текущих и будущих загрузок ETL.
 COPY data/capitals.csv ./data/capitals.csv
+COPY data/stormy_cities.csv ./data/stormy_cities.csv
 COPY data/translations/ ./data/translations/
 COPY main.py dashboard.py ./
 

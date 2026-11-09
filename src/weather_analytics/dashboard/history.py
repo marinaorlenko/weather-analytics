@@ -32,6 +32,137 @@ from weather_analytics.dashboard.weather_ui import (
 )
 
 
+def aggregate_daily_data(
+    dataframe: pd.DataFrame,
+    aggregations: dict[str, str],
+    date_column: str = 'weather_date',
+) -> pd.DataFrame:
+    """Агрегирует дневные данные для графиков длительных периодов."""
+    if dataframe.empty:
+        return dataframe.copy()
+
+    dates = pd.to_datetime(dataframe[date_column])
+    period_days = (dates.max() - dates.min()).days + 1
+
+    # Для коротких периодов сохраняем каждое дневное наблюдение.
+    if period_days <= 90:
+        return dataframe.copy()
+
+    # До двух лет отображаем месяцы, для более длинных периодов — годы.
+    frequency = 'MS' if period_days <= 730 else 'YS'
+
+    available = {
+        column: method
+        for column, method in aggregations.items()
+        if column in dataframe.columns
+    }
+
+    if not available:
+        return pd.DataFrame(columns=[date_column, *aggregations])
+
+    result = dataframe[[date_column, *available]].copy()
+    result[date_column] = pd.to_datetime(result[date_column])
+
+    # При суммировании осадков сохраняем NaN,
+    # если за весь месяц или год нет ни одного наблюдения.
+    available = {
+        column: (
+            (lambda values: values.sum(min_count=1))
+            if method == 'sum'
+            else method
+        )
+        for column, method in available.items()
+    }
+
+    # Группируем по календарным месяцам или годам.
+    # Каждому показателю соответствует собственный метод агрегации.
+    result = (
+        result.set_index(date_column)
+        .resample(frequency)
+        .agg(available)
+        .reset_index()
+    )
+
+    # Не показываем интервалы, в которых отсутствуют все показатели.
+    return result.dropna(subset=list(available), how='all')
+
+
+def select_hourly_period(
+    start_date,
+    end_date,
+    language: str,
+    city_id: int,
+) -> tuple | None:
+    """Позволяет выбрать до 14 дней почасовых наблюдений через календарь."""
+    st.subheader(
+        ui(
+            'Период почасовых наблюдений',
+            'Hourly observation period',
+            language,
+        )
+    )
+
+    default_start = max(
+        start_date,
+        end_date - pd.Timedelta(days=6),
+    )
+    default_period = (default_start, end_date)
+
+    key = f'history_hourly_dates_{city_id}'
+
+    # При изменении основного периода сбрасываем календарь,
+    # если сохранённые даты больше не входят в доступный интервал.
+    if key in st.session_state:
+        current = st.session_state[key]
+
+        valid = (
+            isinstance(current, (tuple, list))
+            and len(current) == 2
+            and start_date <= current[0] <= current[1] <= end_date
+            and (current[1] - current[0]).days < 14
+        )
+
+        if not valid:
+            del st.session_state[key]
+
+    selected = st.date_input(
+        ui(
+            'Выберите даты (не более 14 дней)',
+            'Select dates (maximum 14 days)',
+            language,
+        ),
+        value=default_period,
+        min_value=start_date,
+        max_value=end_date,
+        format='DD.MM.YYYY',
+        key=key,
+    )
+
+    if not isinstance(selected, (tuple, list)) or len(selected) != 2:
+        st.info(
+            ui(
+                'Выберите начальную и конечную даты.',
+                'Select the start and end dates.',
+                language,
+            )
+        )
+        return None
+
+    hourly_start, hourly_end = selected
+
+    if (hourly_end - hourly_start).days >= 14:
+        st.warning(
+            ui(
+                'Максимальный интервал — 14 календарных дней.',
+                'Maximum interval is 14 calendar days.',
+                language,
+            )
+        )
+        return None
+
+    return hourly_start, hourly_end
+
+
 def show_apparent_temperature(
     history: pd.DataFrame,
     extra_daily: pd.DataFrame,
@@ -172,10 +303,18 @@ def show_precipitation(
         )
         return
 
-    # Дождь и снег имеют разные единицы измерения.
+    # Для месячных и годовых графиков осадки суммируются.
+    chart_data = aggregate_daily_data(
+        extra_daily,
+        {
+            'rain_sum': 'sum',
+            'snowfall_sum': 'sum',
+        },
+    )
+
     if rain.gt(0).any():
         show_daily_chart(
-            extra_daily,
+            chart_data,
             'weather_date',
             ['rain_sum'],
             [ui('Дождь', 'Rain', language)],
@@ -187,7 +326,7 @@ def show_precipitation(
 
     if snowfall.gt(0).any():
         show_daily_chart(
-            extra_daily,
+            chart_data,
             'weather_date',
             ['snowfall_sum'],
             [ui('Снег', 'Snowfall', language)],
@@ -230,7 +369,7 @@ def render_history_tab(
     daily = daily.sort_values('weather_date').copy()
 
     # -----------------------------------------------------
-    # Выбор периода
+    # Выбор основного периода
     # -----------------------------------------------------
 
     st.subheader(
@@ -322,7 +461,7 @@ def render_history_tab(
         )
         return
 
-        # -----------------------------------------------------
+    # -----------------------------------------------------
     # Среднесуточная температура
     # -----------------------------------------------------
 
@@ -371,7 +510,11 @@ def render_history_tab(
 
     second.metric(
         ui('Средняя температура', 'Average temperature', language),
-        (f'{average_temperature:.1f} °C' if pd.notna(average_temperature) else '—'),
+        (
+            f'{average_temperature:.1f} °C'
+            if pd.notna(average_temperature)
+            else '—'
+        ),
     )
 
     precipitation_sum = history['precipitation'].sum(min_count=1)
@@ -397,20 +540,29 @@ def render_history_tab(
     )
 
     # -----------------------------------------------------
-    # Температура по дням
+    # Температура по дням, месяцам или годам
     # -----------------------------------------------------
 
     st.divider()
     st.subheader(
         ui(
-            'Температура по дням',
-            'Daily temperature',
+            'Температура',
+            'Temperature',
             language,
         )
     )
 
-    show_daily_chart(
+    temperature_chart = aggregate_daily_data(
         history,
+        {
+            'temperature_min': 'min',
+            'average_temperature': 'mean',
+            'temperature_max': 'max',
+        },
+    )
+
+    show_daily_chart(
+        temperature_chart,
         'weather_date',
         [
             'temperature_min',
@@ -492,8 +644,13 @@ def render_history_tab(
         'wind_direction_dominant'
     ].apply(lambda degrees: wind_direction(degrees, language))
 
-    show_daily_chart(
+    wind_chart = aggregate_daily_data(
         wind_history,
+        {'wind_speed_max': 'max'},
+    )
+
+    show_daily_chart(
+        wind_chart,
         'weather_date',
         ['wind_speed_max'],
         [ui('Максимальная скорость', 'Maximum speed', language)],
@@ -522,10 +679,27 @@ def render_history_tab(
         )
 
     # -----------------------------------------------------
-    # Почасовые наблюдения
+    # Выбор периода почасовых наблюдений
     # -----------------------------------------------------
 
     st.divider()
+
+    hourly_period = select_hourly_period(
+        start_date,
+        end_date,
+        language,
+        selected_city_id,
+    )
+
+    hourly = pd.DataFrame()
+    
+    if hourly_period is not None:
+        hourly_start, hourly_end = hourly_period
+
+    # -----------------------------------------------------
+    # Почасовые наблюдения
+    # -----------------------------------------------------
+
     st.subheader(
         ui(
             'Почасовые наблюдения',
@@ -537,8 +711,8 @@ def render_history_tab(
     try:
         hourly = load_historical_hourly(
             selected_city_id,
-            str(start_date),
-            str(end_date),
+            str(hourly_start),
+            str(hourly_end),
             city_timezone,
         )
 
@@ -576,6 +750,14 @@ def render_history_tab(
             '%',
             language,
         )
+    else:
+        st.info(
+            ui(
+                'За выбранный почасовой период наблюдений нет.',
+                'No hourly observations for the selected period.',
+                language,
+            )
+        )
 
     # -----------------------------------------------------
     # Дополнительные почасовые показатели
@@ -586,6 +768,9 @@ def render_history_tab(
             'historical_hourly',
             selected_city_id,
             HISTORY_HOURLY_EXTRA,
+            start_date=str(hourly_start),
+            end_date=str(hourly_end),
+            timezone=city_timezone,
         )
 
     except psycopg.Error as error:
@@ -597,13 +782,6 @@ def render_history_tab(
             )
         )
         extra_hourly = pd.DataFrame()
-
-    if not extra_hourly.empty:
-        local_dates = extra_hourly['weather_time'].dt.tz_convert(city_timezone).dt.date
-
-        extra_hourly = extra_hourly.loc[
-            local_dates.between(start_date, end_date)
-        ].copy()
 
     if not extra_hourly.empty:
         st.divider()

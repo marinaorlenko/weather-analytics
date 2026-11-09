@@ -21,7 +21,7 @@ from weather_analytics.dashboard.constants import (
 
 
 def ui(ru: str, en: str, language: str) -> str:
-    """Возвращает локализованную подпись нового элемента интерфейса."""
+    """Возвращает локализованную подпись элемента интерфейса."""
     return ru if language == 'ru' else en
 
 
@@ -35,10 +35,14 @@ def wind_direction(degrees: float, language: str) -> str:
         if language == 'ru'
         else ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
     )
+
     return labels[int((float(degrees) % 360 + 22.5) // 45) % 8]
 
 
-def heat_risk(apparent_temperature: float, language: str) -> tuple[str, str]:
+def heat_risk(
+    apparent_temperature: float,
+    language: str,
+) -> tuple[str, str]:
     """Даёт ориентировочную категорию жары по ощущаемой температуре."""
     if apparent_temperature < HEAT_ELEVATED_THRESHOLD:
         return ui('Низкая', 'Low', language), SAGE_GREEN
@@ -57,6 +61,7 @@ def moon_phase(day, language: str) -> tuple[str, str, float]:
     # Опорное новолуние: 6 января 2000 года, 18:14 UTC.
     reference = datetime(2000, 1, 6, 18, 14, tzinfo=UTC)
     moment = datetime.combine(day, datetime.min.time(), tzinfo=UTC)
+
     age = ((moment - reference) / timedelta(days=1)) % SYNODIC_MONTH_DAYS
     fraction = age / SYNODIC_MONTH_DAYS
     illumination = (1 - math.cos(2 * math.pi * fraction)) / 2 * 100
@@ -71,6 +76,7 @@ def moon_phase(day, language: str) -> tuple[str, str, float]:
         'Последняя четверть',
         'Убывающий серп',
     ]
+
     names_en = [
         'New moon',
         'Waxing crescent',
@@ -81,6 +87,7 @@ def moon_phase(day, language: str) -> tuple[str, str, float]:
         'Last quarter',
         'Waning crescent',
     ]
+
     symbols = ['🌑', '🌒', '🌓', '🌔', '🌕', '🌖', '🌗', '🌘']
     index = int((fraction * 8 + 0.5) % 8)
 
@@ -97,10 +104,77 @@ def format_clock(value, timezone_name: str) -> str:
         return '—'
 
     timestamp = pd.Timestamp(value)
+
     if timestamp.tzinfo is not None:
         timestamp = timestamp.tz_convert(timezone_name)
 
     return timestamp.strftime('%H:%M')
+
+
+def select_weather_day(
+    dataframe: pd.DataFrame,
+    date_column: str,
+    language: str,
+    key: str,
+    label_ru: str,
+    label_en: str,
+):
+    """Показывает календарь и возвращает выбранную доступную дату."""
+    dates = pd.to_datetime(
+        dataframe[date_column],
+        errors='coerce',
+    ).dropna().dt.date
+
+    if dates.empty:
+        return None
+
+    # Ограничиваем календарь диапазоном реально загруженных дат.
+    available_dates = set(dates)
+    earliest = min(available_dates)
+    latest = max(available_dates)
+
+    default_date = (
+        earliest if key.startswith('forecast') else latest
+    )
+
+    # При переключении города или периода ранее выбранная дата
+    # может оказаться за пределами нового диапазона.
+    if key in st.session_state:
+        current = st.session_state[key]
+
+        if (
+            not isinstance(current, datetime)
+            and current in available_dates
+        ):
+            default_date = current
+
+        if current not in available_dates:
+            del st.session_state[key]
+
+    selected = st.date_input(
+        ui(label_ru, label_en, language),
+        value=default_date,
+        min_value=earliest,
+        max_value=latest,
+        format='DD.MM.YYYY',
+        key=key,
+    )
+
+    # Календарь допускает выбор даты внутри диапазона,
+    # даже если за конкретные сутки нет наблюдений.
+    if selected not in available_dates:
+        st.warning(
+            ui(
+                'За выбранную дату наблюдения отсутствуют. '
+                'Выберите другую дату.',
+                'No observations are available for this date. '
+                'Please select another date.',
+                language,
+            )
+        )
+        return None
+
+    return selected
 
 
 def show_wind_compass(
@@ -109,8 +183,10 @@ def show_wind_compass(
     date_column: str = 'weather_date',
     key: str = 'history_wind_compass_day',
 ) -> None:
-    """Показывает компас для выбранного дня истории или прогноза."""
-    valid = history.dropna(subset=['wind_direction_dominant']).copy()
+    """Показывает направление и максимальную скорость ветра за выбранный день."""
+    valid = history.dropna(
+        subset=['wind_direction_dominant']
+    ).copy()
 
     if valid.empty:
         st.info(
@@ -122,31 +198,43 @@ def show_wind_compass(
         )
         return
 
-    # Для компаса выбирается конкретный день,
-    # без некорректного усреднения углов.
-    dates = valid[date_column].dt.date.tolist()
-    selected = st.selectbox(
-        ui('День для компаса', 'Compass date', language),
-        options=dates,
-        index=0 if key.startswith('forecast') else len(dates) - 1,
-        format_func=lambda day: day.strftime('%d.%m.%Y'),
-        key=key,
+    selected = select_weather_day(
+        valid,
+        date_column,
+        language,
+        key,
+        'День для компаса',
+        'Compass date',
     )
 
-    row = valid.loc[valid[date_column].dt.date == selected].iloc[0]
+    if selected is None:
+        return
+
+    row = valid.loc[
+        valid[date_column].dt.date == selected
+    ].iloc[0]
+
     direction = float(row['wind_direction_dominant']) % 360
     direction_label = wind_direction(direction, language)
+
     speed = row.get('wind_speed_max')
     speed_text = (
-        f'{float(speed):.1f} {ui("км/ч", "km/h", language)}' if pd.notna(speed) else '—'
+        f'{float(speed):.1f} {ui("км/ч", "km/h", language)}'
+        if pd.notna(speed)
+        else '—'
     )
 
-    left, right = st.columns([1, 2], vertical_alignment='center')
+    left, right = st.columns(
+        [1, 2],
+        vertical_alignment='center',
+    )
 
     with left:
         # Компас статичен: сторонние графические библиотеки не нужны.
         compass_labels = (
-            ('С', 'В', 'Ю', 'З') if language == 'ru' else ('N', 'E', 'S', 'W')
+            ('С', 'В', 'Ю', 'З')
+            if language == 'ru'
+            else ('N', 'E', 'S', 'W')
         )
 
         marks = ''.join(
@@ -199,24 +287,36 @@ def show_wind_compass(
             ui('Направление ветра', 'Wind direction', language),
             f'{direction_label} ({direction:.0f}°)',
         )
+
         st.metric(
-            ui('Максимальная скорость', 'Maximum wind speed', language),
+            ui(
+                'Максимальная скорость за сутки',
+                'Daily maximum wind speed',
+                language,
+            ),
             speed_text,
         )
 
         gusts = row.get('wind_gusts_max')
+
         if pd.notna(gusts):
             st.metric(
-                ui('Максимальные порывы', 'Maximum gusts', language),
+                ui(
+                    'Максимальный порыв за сутки',
+                    'Daily maximum wind gust',
+                    language,
+                ),
                 f'{float(gusts):.1f} {ui("км/ч", "km/h", language)}',
             )
 
         st.caption(
             ui(
                 'Стрелка указывает, откуда дует ветер. '
-                'Показано преобладающее направление за день.',
+                'Показано преобладающее направление за выбранные сутки. '
+                'Скорость и порывы — суточные максимумы.',
                 'The arrow points to where the wind comes from. '
-                'The prevailing daily direction is shown.',
+                'The prevailing direction for the selected day is shown. '
+                'Wind speed and gusts are daily maxima.',
                 language,
             )
         )
@@ -229,7 +329,7 @@ def show_sun_and_moon(
     date_column: str = 'weather_date',
     key: str = 'history_sun_moon_day',
 ) -> None:
-    """Показывает восход, закат, продолжительность дня и фазу Луны."""
+    """Показывает Солнце и фазу Луны за дату, выбранную в календаре."""
     if history.empty:
         st.info(
             ui(
@@ -242,16 +342,21 @@ def show_sun_and_moon(
 
     st.subheader(ui('Солнце', 'Sun', language))
 
-    dates = history[date_column].dt.date.tolist()
-    selected = st.selectbox(
-        ui('День для солнца и Луны', 'Sun and moon date', language),
-        options=dates,
-        index=0 if key.startswith('forecast') else len(dates) - 1,
-        format_func=lambda day: day.strftime('%d.%m.%Y'),
-        key=key,
+    selected = select_weather_day(
+        history,
+        date_column,
+        language,
+        key,
+        'День для солнца и Луны',
+        'Sun and moon date',
     )
 
-    row = history.loc[history[date_column].dt.date == selected].iloc[0]
+    if selected is None:
+        return
+
+    row = history.loc[
+        history[date_column].dt.date == selected
+    ].iloc[0]
 
     sunrise = row.get('sunrise')
     sunset = row.get('sunset')
@@ -262,6 +367,7 @@ def show_sun_and_moon(
 
     if pd.notna(seconds):
         minutes = round(float(seconds) / 60)
+
         duration = (
             f'{minutes // 60} {ui("ч", "h", language)} '
             f'{minutes % 60:02d} {ui("мин", "min", language)}'
@@ -271,7 +377,9 @@ def show_sun_and_moon(
     # по времени восхода и заката.
     if duration == '—' and pd.notna(sunrise) and pd.notna(sunset):
         minutes = round(
-            (pd.Timestamp(sunset) - pd.Timestamp(sunrise)).total_seconds() / 60
+            (
+                pd.Timestamp(sunset) - pd.Timestamp(sunrise)
+            ).total_seconds() / 60
         )
 
         if minutes >= 0:
@@ -281,23 +389,30 @@ def show_sun_and_moon(
             )
 
     a, b, c = st.columns(3)
+
     a.metric(
         ui('Восход', 'Sunrise', language),
         format_clock(sunrise, timezone_name),
     )
+
     b.metric(
         ui('Закат', 'Sunset', language),
         format_clock(sunset, timezone_name),
     )
+
     c.metric(
         ui('Продолжительность дня', 'Day length', language),
         duration,
     )
 
     st.subheader(ui('Фаза Луны', 'Moon phase', language))
+
     symbol, phase, illumination = moon_phase(selected, language)
 
-    left, right = st.columns([1, 4], vertical_alignment='center')
+    left, right = st.columns(
+        [1, 4],
+        vertical_alignment='center',
+    )
 
     with left:
         st.markdown(
@@ -307,13 +422,18 @@ def show_sun_and_moon(
 
     with right:
         st.markdown(f'**{phase}**')
+
         st.caption(
-            f'{ui("Освещённость", "Illumination", language)}: ≈ {illumination:.0f}%'
+            f'{ui("Освещённость", "Illumination", language)}: '
+            f'≈ {illumination:.0f}%'
         )
+
         st.caption(
             ui(
-                'Приблизительный астрономический расчёт, не данные погодного API.',
-                'Approximate astronomical calculation, not weather API data.',
+                'Приблизительный астрономический расчёт, '
+                'не данные погодного API.',
+                'Approximate astronomical calculation, '
+                'not weather API data.',
                 language,
             )
         )

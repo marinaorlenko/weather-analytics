@@ -21,6 +21,26 @@ def get_connection() -> psycopg.Connection:
     )
 
 
+def get_utc_date_bounds(
+    start_date: str,
+    end_date: str,
+    timezone: str,
+) -> tuple[pd.Timestamp, pd.Timestamp]:
+    """Возвращает UTC-границы диапазона местных календарных дат."""
+    if pd.Timestamp(start_date) > pd.Timestamp(end_date):
+        raise ValueError('Начальная дата не может быть позже конечной')
+
+    # Сначала определяем границы местных календарных суток.
+    # Прибавляем календарный день до локализации, чтобы корректно
+    # учитывать переходы на летнее и зимнее время.
+    start_local = pd.Timestamp(start_date).tz_localize(timezone)
+    end_local = (
+        pd.Timestamp(end_date) + pd.Timedelta(days=1)
+    ).tz_localize(timezone)
+
+    return start_local.tz_convert('UTC'), end_local.tz_convert('UTC')
+
+
 @st.cache_data(ttl=300)
 def load_cities() -> pd.DataFrame:
     """Загружает список городов и их часовых поясов."""
@@ -92,7 +112,13 @@ def load_historical_hourly(
     end_date: str,
     timezone: str,
 ) -> pd.DataFrame:
-    """Загружает почасовую историю по местным датам города."""
+    """Загружает почасовую историю за диапазон местных дат города."""
+    start_utc, end_utc = get_utc_date_bounds(
+        start_date,
+        end_date,
+        timezone,
+    )
+
     query = """
         SELECT
             weather_time,
@@ -100,8 +126,8 @@ def load_historical_hourly(
             humidity
         FROM historical_hourly
         WHERE city_id = %s
-          AND (weather_time AT TIME ZONE %s)::date
-              BETWEEN %s::date AND %s::date
+          AND weather_time >= %s
+          AND weather_time < %s
         ORDER BY weather_time
     """
 
@@ -109,7 +135,7 @@ def load_historical_hourly(
         with connection.cursor() as cursor:
             cursor.execute(
                 query,
-                (city_id, timezone, start_date, end_date),
+                (city_id, start_utc.to_pydatetime(), end_utc.to_pydatetime()),
             )
             records = cursor.fetchall()
 
@@ -338,6 +364,9 @@ def load_extra_metrics(
     city_id: int,
     columns: tuple[str, ...],
     fetched_at: pd.Timestamp | None = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    timezone: str | None = None,
 ) -> pd.DataFrame:
     """Загружает дополнительные показатели из разрешённых погодных таблиц."""
     allowed = {
@@ -374,6 +403,27 @@ def load_extra_metrics(
 
         query += ' AND fetched_at = %s'
         params.append(fetched_at.to_pydatetime())
+
+    # Для исторических почасовых данных ограничиваем выборку
+    # UTC-границами местных суток непосредственно в PostgreSQL.
+    if table_name == 'historical_hourly':
+        if any(value is not None for value in (start_date, end_date, timezone)):
+            if not all(value is not None for value in (start_date, end_date, timezone)):
+                raise ValueError(
+                    'Для диапазона исторических часов необходимы '
+                    'start_date, end_date и timezone'
+                )
+
+            start_utc, end_utc = get_utc_date_bounds(
+                start_date,
+                end_date,
+                timezone,
+            )
+
+            query += f' AND {time_column} >= %s AND {time_column} < %s'
+            params.extend(
+                [start_utc.to_pydatetime(), end_utc.to_pydatetime()]
+            )
 
     query += f' ORDER BY {time_column}'
 

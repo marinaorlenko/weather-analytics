@@ -212,7 +212,12 @@ def test_run_modes(
     transformer = dependencies['transformer']
 
     if expected_historical:
-        historical.assert_called_once_with(
+        historical.assert_called_once()
+
+        args = historical.call_args.args
+        kwargs = historical.call_args.kwargs
+
+        assert args == (
             loader,
             transformer,
             dependencies['reader'].return_value.read.return_value[0],
@@ -220,6 +225,10 @@ def test_run_modes(
             START_DATE,
             END_DATE,
         )
+
+        assert kwargs['max_periods'] is None
+        assert kwargs['rate_limiter'] is not None
+        assert callable(kwargs['on_period_saved'])
     else:
         historical.assert_not_called()
 
@@ -478,3 +487,65 @@ def test_fail_run_error_preserves_original(
                 )
 
     loader.fail_run.assert_called_once()
+
+
+def test_run_stops_all_cities_on_http_429(
+    etl,
+    dependencies,
+) -> None:
+    """Проверяет остановку всего исторического ETL при HTTP 429."""
+    import httpx
+
+    request = httpx.Request('GET', 'https://example.com/archive')
+    response = httpx.Response(429, request=request)
+
+    error = httpx.HTTPStatusError(
+        'Too Many Requests',
+        request=request,
+        response=response,
+    )
+
+    with patch.object(
+        etl,
+        '_run_historical',
+        side_effect=error,
+    ) as historical:
+        with pytest.raises(httpx.HTTPStatusError) as exc_info:
+            etl.run(
+                mode='initial',
+                city_names=('Dubai', 'London'),
+                start_date=START_DATE,
+                end_date=END_DATE,
+            )
+
+    assert exc_info.value.response.status_code == 429
+
+    # После ошибки первого города второй не обрабатывается.
+    historical.assert_called_once()
+    dependencies['loader'].save_city.assert_called_once_with(
+        dependencies['reader'].return_value.read.return_value[0]
+    )
+
+
+def test_run_uses_shared_historical_rate_limiter(
+    etl,
+    dependencies,
+) -> None:
+    """Проверяет общий ограничитель запросов для всех городов."""
+    with patch.object(etl, '_run_historical') as historical:
+        etl.run(
+            mode='initial',
+            city_names=('Dubai', 'London'),
+            start_date=START_DATE,
+            end_date=END_DATE,
+        )
+
+    assert historical.call_count == 2
+
+    first_call, second_call = historical.call_args_list
+
+    first_limiter = first_call.kwargs['rate_limiter']
+    second_limiter = second_call.kwargs['rate_limiter']
+
+    # Оба города получают один и тот же объект ограничителя.
+    assert first_limiter is second_limiter

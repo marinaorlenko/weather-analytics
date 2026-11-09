@@ -51,6 +51,22 @@ from weather_analytics.config import get_settings
 LOGGER = logging.getLogger(__name__)
 
 
+def log_http_error(message: str, error: httpx.HTTPError) -> None:
+    """Логирует HTTP-ошибку без URL и параметров запроса."""
+    if isinstance(error, httpx.HTTPStatusError):
+        LOGGER.error(
+            '%s: HTTP %s',
+            message,
+            error.response.status_code,
+        )
+    else:
+        LOGGER.error(
+            '%s: %s',
+            message,
+            type(error).__name__,
+        )
+
+
 def user_state(
     context: ContextTypes.DEFAULT_TYPE,
 ) -> dict[str, Any] | None:
@@ -494,16 +510,18 @@ async def respond_weather(
             ),
         )
 
-    except (
-        httpx.HTTPError,
-        KeyError,
-        TypeError,
-        IndexError,
-    ) as exc:
-        LOGGER.exception(
-            'Ошибка получения погоды: %s',
-            exc,
+    except httpx.HTTPError as exc:
+        # Не записываем полный URL запроса и параметры API в журнал.
+        log_http_error('Ошибка получения погоды', exc)
+
+        await reply(
+            update,
+            MESSAGES[language]['error'],
         )
+
+    except (KeyError, TypeError, IndexError):
+        # Для ошибок структуры данных сохраняем traceback.
+        LOGGER.exception('Ошибка обработки погодных данных')
 
         await reply(
             update,
@@ -684,11 +702,17 @@ async def handle_text(
             language,
         )
 
-    except (httpx.HTTPError, ValueError) as exc:
-        LOGGER.exception(
-            'Ошибка геокодирования: %s',
-            exc,
+    except httpx.HTTPError as exc:
+        log_http_error('Ошибка геокодирования', exc)
+
+        await reply(
+            update,
+            MESSAGES[language]['error'],
         )
+        return
+
+    except ValueError:
+        LOGGER.exception('Ошибка обработки результатов геокодирования')
 
         await reply(
             update,
@@ -892,6 +916,10 @@ def main() -> None:
         level=logging.INFO,
         format='%(asctime)s | %(levelname)s | %(message)s',
     )
+
+    # Не записываем HTTP-запросы с токеном Telegram в журналы.
+    logging.getLogger('httpx').setLevel(logging.CRITICAL)
+    logging.getLogger('httpcore').setLevel(logging.CRITICAL)
 
     token = get_settings().telegram_bot_token.get_secret_value()
 

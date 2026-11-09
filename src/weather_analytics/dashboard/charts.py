@@ -37,7 +37,7 @@ def get_date_ticks(
     dataframe: pd.DataFrame,
     date_column: str,
 ) -> list:
-    """Возвращает по одной отметке на каждый календарный день."""
+    """Возвращает адаптивные отметки оси X для выбранного периода."""
     if dataframe.empty or date_column not in dataframe:
         return []
 
@@ -49,27 +49,85 @@ def get_date_ticks(
     if dates.empty:
         return []
 
-    # Нормализация времени убирает повторяющиеся отметки внутри суток.
-    return dates.dt.normalize().drop_duplicates().sort_values().tolist()
+    # Используем календарные дни, чтобы почасовые наблюдения
+    # не создавали отдельную отметку для каждого часа.
+    first = dates.min().normalize()
+    last = dates.max().normalize()
+    days = (last - first).days + 1
+
+    if days <= 14:
+        frequency = 'D'
+    elif days <= 90:
+        frequency = '7D'
+    elif days <= 365:
+        frequency = 'MS'
+    elif days <= 730:
+        frequency = '3MS'
+    else:
+        frequency = 'YS'
+
+    ticks = pd.date_range(first, last, freq=frequency).tolist()
+
+    # Для периодов до двух лет добавляем первую дату,
+    # если она не совпадает с календарной отметкой.
+    # Для многолетних периодов оставляем только начала годов,
+    # чтобы не создавать повторяющиеся подписи.
+    if days <= 730 and (not ticks or ticks[0] != first):
+        ticks.insert(0, first)
+
+    return ticks
+
+
+def get_date_format(
+    dataframe: pd.DataFrame,
+    date_column: str,
+) -> str:
+    """Выбирает формат подписей по фактической длине периода."""
+    if dataframe.empty or date_column not in dataframe:
+        return '%d.%m'
+
+    dates = pd.to_datetime(
+        dataframe[date_column],
+        errors='coerce',
+    ).dropna()
+
+    if dates.empty:
+        return '%d.%m'
+
+    days = (dates.max().normalize() - dates.min().normalize()).days + 1
+
+    if days > 730:
+        return '%Y'
+
+    if days > 90:
+        return '%b %Y'
+
+    return '%d.%m'
 
 
 def date_axis(
     ticks: list,
     language: str,
     hourly: bool = False,
+    date_column: str | None = None,
+    date_format: str = '%d.%m',
+    grid: bool = True,
 ) -> alt.X:
-    """Создаёт единую ось дат без автоматических почасовых подписей."""
+    """Создаёт единую ось X с заданными отметками и форматом дат."""
+    if date_column is None:
+        date_column = 'local_time' if hourly else 'weather_date'
+
     return alt.X(
-        'local_time:T' if hourly else 'weather_date:T',
+        f'{date_column}:T',
         title=translate(
             'datetime' if hourly else 'date',
             language,
         ),
         axis=alt.Axis(
             values=ticks,
-            format='%d.%m',
+            format=date_format,
             labelAngle=0,
-            grid=True,
+            grid=grid,
         ),
     )
 
@@ -113,7 +171,7 @@ def show_daily_chart(
     chart_type: str = 'line',
     extra_tooltips: list[alt.Tooltip] | None = None,
 ) -> None:
-    """Строит ежедневный график с корректным масштабом и датами."""
+    """Строит ежедневный график с адаптивной осью дат."""
     if dataframe.empty:
         return
 
@@ -137,8 +195,9 @@ def show_daily_chart(
         return
 
     ticks = get_date_ticks(dataframe, date_column)
+    date_format = get_date_format(dataframe, date_column)
 
-    # Начинаем ось Y с нуля для сопоставимости масштабов графиков.
+    # Сохраняем ранее согласованный масштаб оси Y от нуля.
     y_scale = alt.Scale(zero=True)
 
     tooltip = [
@@ -161,15 +220,11 @@ def show_daily_chart(
         tooltip.extend(extra_tooltips)
 
     base = alt.Chart(chart_data).encode(
-        x=alt.X(
-            f'{date_column}:T',
-            title=translate('date', language),
-            axis=alt.Axis(
-                values=ticks,
-                format='%d.%m',
-                labelAngle=0,
-                grid=True,
-            ),
+        x=date_axis(
+            ticks,
+            language,
+            date_column=date_column,
+            date_format=date_format,
         ),
         y=alt.Y(
             'value:Q',
@@ -209,7 +264,7 @@ def show_hourly_chart(
     unit: str,
     language: str,
 ) -> None:
-    """Строит почасовой график с одной подписью на каждый день."""
+    """Строит почасовой график с адаптивной осью дат."""
     st.subheader(title)
 
     if dataframe.empty or column not in dataframe:
@@ -228,6 +283,7 @@ def show_hourly_chart(
         return
 
     ticks = get_date_ticks(plot_data, 'local_time')
+    date_format = get_date_format(plot_data, 'local_time')
 
     chart = (
         alt.Chart(plot_data)
@@ -236,15 +292,11 @@ def show_hourly_chart(
             strokeWidth=2.2,
         )
         .encode(
-            x=alt.X(
-                'local_time:T',
-                title=translate('datetime', language),
-                axis=alt.Axis(
-                    values=ticks,
-                    format='%d.%m',
-                    labelAngle=0,
-                    grid=True,
-                ),
+            x=date_axis(
+                ticks,
+                language,
+                hourly=True,
+                date_format=date_format,
             ),
             y=alt.Y(
                 f'{column}:Q',
@@ -313,6 +365,7 @@ def show_comparison_chart(
     )
 
     ticks = get_date_ticks(comparison, 'weather_date')
+    date_format = get_date_format(comparison, 'weather_date')
 
     chart = (
         alt.Chart(chart_data)
@@ -321,14 +374,11 @@ def show_comparison_chart(
             strokeWidth=2.5,
         )
         .encode(
-            x=alt.X(
-                'weather_date:T',
-                title=translate('date', language),
-                axis=alt.Axis(
-                    values=ticks,
-                    format='%d.%m',
-                    labelAngle=0,
-                ),
+            x=date_axis(
+                ticks,
+                language,
+                date_format=date_format,
+                grid=False,
             ),
             y=alt.Y(
                 'temperature:Q',
@@ -380,7 +430,7 @@ def show_extra_charts(
     timezone: str,
     daily: bool = False,
 ) -> None:
-    """Строит дополнительные графики с компактной осью дат."""
+    """Строит дополнительные графики с адаптивной осью дат."""
     if dataframe.empty:
         st.info(translate('no_extra', language))
         return
@@ -398,6 +448,7 @@ def show_extra_charts(
         x_column = time_column
 
     ticks = get_date_ticks(plot_data, x_column)
+    date_format = get_date_format(plot_data, x_column)
     shown = 0
 
     for index, column in enumerate(columns):
@@ -442,18 +493,12 @@ def show_extra_charts(
                 color=EXTRA_COLORS[index % len(EXTRA_COLORS)],
             )
             .encode(
-                x=alt.X(
-                    f'{x_column}:T',
-                    title=translate(
-                        'date' if daily else 'datetime',
-                        language,
-                    ),
-                    axis=alt.Axis(
-                        values=ticks,
-                        format='%d.%m',
-                        labelAngle=0,
-                        grid=True,
-                    ),
+                x=date_axis(
+                    ticks,
+                    language,
+                    hourly=not daily,
+                    date_column=x_column,
+                    date_format=date_format,
                 ),
                 y=alt.Y(
                     f'{column}:Q',

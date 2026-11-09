@@ -21,31 +21,6 @@ st.set_page_config(
 
 
 # ---------------------------------------------------------
-# Подготовка данных для графиков
-# ---------------------------------------------------------
-
-# HISTORY_DAILY_EXTRA = (
-#     'apparent_temperature_mean', 'rain_sum', 'snowfall_sum',
-#     'sunshine_duration', 'shortwave_radiation_sum',
-# )
-# HISTORY_HOURLY_EXTRA = (
-#     'dew_point', 'pressure_msl', 'cloud_cover', 'wind_gusts',
-# )
-# FORECAST_DAILY_EXTRA = (
-#     'apparent_temperature_mean', 'precipitation_probability_max',
-#     'uv_index_max', 'wind_gusts_max', 'daylight_duration',
-# )
-# FORECAST_HOURLY_EXTRA = (
-#     'precipitation_probability', 'pressure_msl', 'cloud_cover',
-#     'visibility', 'wind_speed', 'wind_gusts',
-# )
-# ECMWF_EXTRA = (
-#     'cape', 'precipitation_type', 'snowfall_water_equivalent',
-#     'wet_bulb_temperature',
-# )
-
-
-# ---------------------------------------------------------
 # Настройки интерфейса
 # ---------------------------------------------------------
 
@@ -57,7 +32,25 @@ selected_language = st.sidebar.selectbox(
 
 language = 'ru' if selected_language == 'Русский' else 'en'
 
-st.title('🌍 Weather Analytics')
+# Заголовок и переход в Telegram-бота.
+title_column, bot_column = st.columns([5, 1], vertical_alignment='center')
+
+with title_column:
+    st.title('🌍 Weather Analytics')
+
+with bot_column:
+    st.link_button(
+        'Telegram',
+        'https://t.me/StormyForecastBot',
+        icon=':material/send:',
+        help=(
+            'Открыть Stormy в Telegram'
+            if language == 'ru'
+            else 'Open Stormy on Telegram'
+        ),
+        use_container_width=True,
+    )
+
 st.caption(translate('subtitle', language))
 
 try:
