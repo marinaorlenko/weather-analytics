@@ -4,7 +4,7 @@
 загрузкой погодных данных, проверкой и сохранением результатов.
 
 История загружается по календарным месяцам с возможностью
-возобновления. Прогнозы сохраняются отдельными снимками.
+возобновления. Режим batch ограничивает объём одного запуска.
 """
 
 import logging
@@ -23,7 +23,7 @@ from weather_analytics.models.weather import Location
 
 logger = logging.getLogger(__name__)
 
-ETLMode = Literal['local', 'initial', 'daily', 'forecast']
+ETLMode = Literal['local', 'initial', 'daily', 'forecast', 'batch']
 
 
 class WeatherETL:
@@ -35,19 +35,10 @@ class WeatherETL:
         city_names: tuple[str, ...] | None = None,
         start_date: date | None = None,
         end_date: date | None = None,
+        max_periods: int | None = None,
     ) -> None:
-        """Запускает ETL в выбранном режиме.
-
-        Args:
-            mode: Режим выполнения ETL.
-            city_names: Необязательный список выбранных городов.
-            start_date: Начало исторического периода.
-            end_date: Конец исторического периода.
-
-        Raises:
-            ValueError: Если параметры запуска некорректны.
-        """
-        if mode not in ('local', 'initial', 'daily', 'forecast'):
+        """Запускает ETL с необязательным общим лимитом периодов."""
+        if mode not in ('local', 'initial', 'daily', 'forecast', 'batch'):
             raise ValueError(f'Неизвестный режим ETL: {mode}')
 
         if mode != 'forecast':
@@ -60,7 +51,9 @@ class WeatherETL:
             if start_date > end_date:
                 raise ValueError('Начальная дата не может быть позже конечной')
 
-        # Инициализируем базу и таблицы перед загрузкой.
+        if max_periods is not None and max_periods < 1:
+            raise ValueError('Лимит периодов должен быть положительным')
+
         initializer = DatabaseInitializer()
         initializer.initialize()
 
@@ -69,12 +62,10 @@ class WeatherETL:
 
         locations = CityReader('data/capitals.csv').read()
 
-        # Локальная выборка определяется названиями,
-        # а не расположением строк в справочнике.
+        # Выборка городов определяется названиями из справочника.
         if city_names is not None:
             selected = {name.casefold() for name in city_names}
             available = {location.name.casefold() for location in locations}
-
             missing = selected - available
 
             if missing:
@@ -89,41 +80,63 @@ class WeatherETL:
             ]
 
         logger.info(
-            'Запуск ETL: режим=%s, городов=%s, период=%s — %s',
+            'Запуск ETL: режим=%s, городов=%s, период=%s — %s, лимит=%s',
             mode,
             len(locations),
             start_date,
             end_date,
+            max_periods,
         )
 
         successful = 0
         failed = 0
+        processed_periods = 0
 
         for location in locations:
+            # Лимит общий для всех городов.
+            if max_periods is not None and processed_periods >= max_periods:
+                logger.info('Достигнут лимит: %s периодов', max_periods)
+                break
+
             try:
                 city_id = loader.save_city(location)
             except Exception:
                 failed += 1
-                logger.exception(
-                    'Ошибка сохранения города: %s',
-                    location.name,
-                )
+                logger.exception('Ошибка сохранения города: %s', location.name)
                 continue
 
             city_success = True
 
-            # История и прогнозы выполняются только
-            # в соответствующих режимах.
-            if mode in ('local', 'initial', 'daily'):
+            if mode in ('local', 'initial', 'daily', 'batch'):
                 try:
-                    self._run_historical(
-                        loader,
-                        transformer,
-                        location,
-                        city_id,
-                        start_date,
-                        end_date,
+                    remaining = (
+                        None if max_periods is None else max_periods - processed_periods
                     )
+
+                    if remaining is None:
+                        # Сохраняем прежний вызов для существующих режимов ETL.
+                        result = self._run_historical(
+                            loader,
+                            transformer,
+                            location,
+                            city_id,
+                            start_date,
+                            end_date,
+                        )
+                    else:
+                        # В режиме batch передаём ограничение периодов.
+                        result = self._run_historical(
+                            loader,
+                            transformer,
+                            location,
+                            city_id,
+                            start_date,
+                            end_date,
+                            remaining,
+                        )
+
+                    if result is not None:
+                        processed_periods += result
                 except Exception:
                     city_success = False
                     logger.exception(
@@ -152,10 +165,10 @@ class WeatherETL:
                 failed += 1
 
         logger.info(
-            'ETL завершён: успешно=%s, ошибок=%s, всего=%s',
+            'ETL завершён: успешно=%s, ошибок=%s, периодов=%s',
             successful,
             failed,
-            len(locations),
+            processed_periods,
         )
 
         if failed:
@@ -169,10 +182,9 @@ class WeatherETL:
         city_id: int,
         start_date: date,
         end_date: date,
-    ) -> None:
-        """Загружает историю с сохранением прогресса по городам."""
-        # Продолжаем со следующего дня после успешно
-        # сохранённого периода.
+        max_periods: int | None = None,
+    ) -> int:
+        """Загружает историю и возвращает число сохранённых периодов."""
         last_loaded_date = loader.get_last_loaded_date(city_id)
 
         if last_loaded_date is not None:
@@ -187,11 +199,15 @@ class WeatherETL:
                 location.name,
                 end_date,
             )
-            return
+            return 0
 
         periods = split_date_range(start_date, end_date)
+        processed = 0
 
         for period_start, period_end in periods:
+            if max_periods is not None and processed >= max_periods:
+                break
+
             run_id = loader.start_run('historical')
 
             try:
@@ -221,8 +237,6 @@ class WeatherETL:
                     hourly_records,
                 )
 
-                # Записи, прогресс и статус запуска сохраняются
-                # в одной транзакции существующего Loader.
                 rows_loaded = loader.save_historical_period(
                     city_id=city_id,
                     run_id=run_id,
@@ -230,6 +244,8 @@ class WeatherETL:
                     hourly_records=hourly_records,
                     loaded_date=period_end,
                 )
+
+                processed += 1
 
                 logger.info(
                     'История: %s, %s — %s, записей=%s',
@@ -249,6 +265,8 @@ class WeatherETL:
                     )
 
                 raise
+
+        return processed
 
     def _run_forecast(
         self,
