@@ -4,8 +4,24 @@ import json
 from functools import lru_cache
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-TRANSLATIONS_DIR = PROJECT_ROOT / 'data' / 'translations'
+
+def _find_translations_dir() -> Path:
+    """Находит каталог переводов локально и внутри Docker."""
+    candidates = (
+        Path.cwd(),
+        *Path(__file__).resolve().parents,
+    )
+
+    for directory in candidates:
+        translations_dir = directory / 'data' / 'translations'
+
+        if translations_dir.is_dir():
+            return translations_dir
+
+    raise FileNotFoundError('Каталог data/translations не найден')
+
+
+TRANSLATIONS_DIR = _find_translations_dir()
 
 
 TEXTS = {
