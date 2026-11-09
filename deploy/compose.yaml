@@ -88,6 +88,8 @@ services:
     profiles:
       - jobs
     restart: "no"
+    volumes:
+      - ../data/stormy_cities.csv:/app/data/stormy_cities.csv:ro
     command:
       - python
       - main.py
