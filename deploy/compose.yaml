@@ -22,6 +22,8 @@ services:
   db:
     image: postgres:16
     restart: unless-stopped
+    ports:
+      - "127.0.0.1:5432:5432"
     environment:
       POSTGRES_DB: ${DB_NAME:-weather_analytics}
       POSTGRES_USER: ${DB_USER:-stormy}
