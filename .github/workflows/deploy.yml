@@ -1,0 +1,111 @@
+name: Stormy CI/CD
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stormy-production
+  cancel-in-progress: false
+
+jobs:
+  ci:
+    name: Ruff and pytest
+    runs-on: ubuntu-24.04
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: stormy
+          POSTGRES_PASSWORD: stormy_ci_password
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U stormy -d postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      APP_ENV: local
+      DB_HOST: localhost
+      DB_PORT: '5432'
+      DB_NAME: weather_analytics
+      DB_USER: stormy
+      DB_PASSWORD: stormy_ci_password
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install dependencies
+        run: python -m pip install '.[dev]'
+
+      - name: Check Ruff
+        run: |
+          ruff check .
+          ruff format --check .
+
+      - name: Run tests
+        run: pytest -q
+
+  deploy:
+    name: Deploy to VPS
+    runs-on: ubuntu-24.04
+    needs: ci
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Configure SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/stormy_deploy
+          chmod 600 ~/.ssh/stormy_deploy
+          printf '%s\n' "$VPS_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      
+      - name: Deploy application
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          ssh -i ~/.ssh/stormy_deploy \
+            -o IdentitiesOnly=yes \
+            "$VPS_USER@$VPS_HOST" 'bash -se' <<'REMOTE'
+          set -euo pipefail
+
+          cd /home/stormy/weather-analytics
+          test -f .env
+
+          if [ ! -d .git ]; then
+            git init
+            git remote add origin https://github.com/marinaorlenko/weather-analytics.git
+          fi
+
+          git fetch --depth=1 origin main
+          git checkout -B main FETCH_HEAD
+
+          docker compose --env-file .env \
+            -f deploy/compose.yaml \
+            up -d --build --remove-orphans db dashboard bot
+
+          docker compose --env-file .env \
+            -f deploy/compose.yaml ps
+          REMOTE
