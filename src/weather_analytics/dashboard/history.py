@@ -383,12 +383,19 @@ def render_history_tab(
         'custom': ui('Выбрать даты', 'Custom dates', language),
     }
 
+    # Сохраняем выбранный период независимо от языка интерфейса.
+    if 'history_period_value' not in st.session_state:
+        st.session_state.history_period_value = 'all'
+
     period = st.selectbox(
         ui('Период', 'Period', language),
         options=list(period_options),
+        index=list(period_options).index(st.session_state.history_period_value),
         format_func=lambda option: period_options[option],
-        key='history_period',
+        key=f'history_period_{language}',
     )
+
+    st.session_state.history_period_value = period
 
     earliest = daily['weather_date'].min().date()
     latest = daily['weather_date'].max().date()
@@ -683,72 +690,73 @@ def render_history_tab(
     )
 
     hourly = pd.DataFrame()
+    extra_hourly = pd.DataFrame()
 
     if hourly_period is not None:
         hourly_start, hourly_end = hourly_period
 
-    # -----------------------------------------------------
-    # Почасовые наблюдения
-    # -----------------------------------------------------
+        # -----------------------------------------------------
+        # Почасовые наблюдения
+        # -----------------------------------------------------
 
-    st.subheader(
-        ui(
-            'Почасовые наблюдения',
-            'Hourly observations',
-            language,
-        )
-    )
-
-    try:
-        hourly = load_historical_hourly(
-            selected_city_id,
-            str(hourly_start),
-            str(hourly_end),
-            city_timezone,
-        )
-
-    except psycopg.Error as error:
-        st.error(
+        st.subheader(
             ui(
-                f'Ошибка почасовых данных: {error}',
-                f'Hourly data loading error: {error}',
+                'Почасовые наблюдения',
+                'Hourly observations',
                 language,
             )
         )
-        hourly = pd.DataFrame()
 
-    if not hourly.empty:
-        hourly = prepare_local_time(
-            hourly,
-            'weather_time',
-            city_timezone,
-        )
+        try:
+            hourly = load_historical_hourly(
+                selected_city_id,
+                str(hourly_start),
+                str(hourly_end),
+                city_timezone,
+            )
 
-        show_hourly_chart(
-            hourly,
-            'temperature',
-            ui('Температура по часам', 'Hourly temperature', language),
-            STEEL_BLUE,
-            '°C',
-            language,
-        )
+        except psycopg.Error as error:
+            st.error(
+                ui(
+                    f'Ошибка почасовых данных: {error}',
+                    f'Hourly data loading error: {error}',
+                    language,
+                )
+            )
+            hourly = pd.DataFrame()
 
-        show_hourly_chart(
-            hourly,
-            'humidity',
-            ui('Влажность по часам', 'Hourly humidity', language),
-            SAGE_GREEN,
-            '%',
-            language,
-        )
-    else:
-        st.info(
-            ui(
-                'За выбранный почасовой период наблюдений нет.',
-                'No hourly observations for the selected period.',
+        if not hourly.empty:
+            hourly = prepare_local_time(
+                hourly,
+                'weather_time',
+                city_timezone,
+            )
+
+            show_hourly_chart(
+                hourly,
+                'temperature',
+                ui('Температура по часам', 'Hourly temperature', language),
+                STEEL_BLUE,
+                '°C',
                 language,
             )
-        )
+
+            show_hourly_chart(
+                hourly,
+                'humidity',
+                ui('Влажность по часам', 'Hourly humidity', language),
+                SAGE_GREEN,
+                '%',
+                language,
+            )
+        else:
+            st.info(
+                ui(
+                    'За выбранный почасовой период наблюдений нет.',
+                    'No hourly observations for the selected period.',
+                    language,
+                )
+            )
 
     # -----------------------------------------------------
     # Дополнительные почасовые показатели
