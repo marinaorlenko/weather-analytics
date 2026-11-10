@@ -88,6 +88,7 @@ def validate_historical_records(
         for previous, current in zip(
             sorted_timestamps,
             sorted_timestamps[1:],
+            strict=False,
         )
     ):
         raise ValueError(
