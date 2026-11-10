@@ -1,8 +1,7 @@
 """Проверка полноты исторических погодных данных."""
 
-from datetime import UTC, date, datetime, time, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
-from zoneinfo import ZoneInfo
 
 from weather_analytics.models.weather import Location
 
@@ -46,39 +45,52 @@ def validate_historical_records(
             f'получено {len(actual_dates)} записей'
         )
 
-    # Определяем границы локального периода и переводим их в UTC.
-    # Это позволяет учитывать сутки продолжительностью 23 или 25 часов.
-    city_timezone = ZoneInfo(location.timezone)
+    # Историческая выгрузка Open-Meteo в текущей конфигурации
+    # содержит 24 почасовые записи на каждый календарный день.
+    # Не рассчитываем число часов через локальные границы месяца:
+    # переходы на летнее время создают расхождение на один час.
+    expected_hours = expected_days * 24
 
-    start_utc = datetime.combine(
-        start_date,
-        time.min,
-        tzinfo=city_timezone,
-    ).astimezone(UTC)
+    actual_timestamps = [
+        record.get('weather_time') for record in hourly_records
+    ]
 
-    end_utc = datetime.combine(
-        end_date + timedelta(days=1),
-        time.min,
-        tzinfo=city_timezone,
-    ).astimezone(UTC)
-
-    # Формируем ожидаемые почасовые метки в UTC.
-    # В UTC переходов между летним и зимним временем нет.
-    expected_hours = int((end_utc - start_utc).total_seconds() // 3600)
-
-    expected_timestamps = {
-        start_utc + timedelta(hours=offset) for offset in range(expected_hours)
-    }
-
-    actual_timestamps = [record.get('weather_time') for record in hourly_records]
-
-    # Проверяем количество, уникальность и непрерывность часов.
-    if (
-        len(actual_timestamps) != expected_hours
-        or set(actual_timestamps) != expected_timestamps
-    ):
+    # Сначала проверяем количество записей.
+    if len(actual_timestamps) != expected_hours:
         raise ValueError(
             'Неполные или некорректные почасовые данные: '
             f'ожидалось {expected_hours} часов, '
             f'получено {len(actual_timestamps)} записей'
+        )
+
+    # Временные метки должны быть datetime с часовым поясом.
+    # Трансформер сохраняет исторические метки в UTC.
+    if any(
+        not isinstance(timestamp, datetime)
+        or timestamp.tzinfo is None
+        or timestamp.utcoffset() is None
+        or timestamp.utcoffset() != timedelta(0)
+        for timestamp in actual_timestamps
+    ):
+        raise ValueError(
+            'Некорректные почасовые данные: '
+            'временные метки должны содержать часовой пояс UTC'
+        )
+
+    # Проверяем отсутствие дубликатов и непрерывность ряда.
+    # Сортировка позволяет не зависеть от порядка записей API.
+    sorted_timestamps = sorted(
+        timestamp.astimezone(UTC) for timestamp in actual_timestamps
+    )
+
+    if any(
+        current - previous != timedelta(hours=1)
+        for previous, current in zip(
+            sorted_timestamps,
+            sorted_timestamps[1:],
+        )
+    ):
+        raise ValueError(
+            'Неполные или некорректные почасовые данные: '
+            'обнаружены пропуски или дубликаты временных меток'
         )
