@@ -145,9 +145,7 @@ class OpenMeteoHTTPClient:
                 if retry_date.tzinfo is None:
                     retry_date = retry_date.replace(tzinfo=UTC)
 
-                requested_delay = (
-                    retry_date - datetime.now(UTC)
-                ).total_seconds()
+                requested_delay = (retry_date - datetime.now(UTC)).total_seconds()
 
             except (TypeError, ValueError, OverflowError):
                 return delay
