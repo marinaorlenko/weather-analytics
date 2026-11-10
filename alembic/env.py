@@ -1,7 +1,5 @@
 """Настройка Alembic для автоматического управления схемой PostgreSQL."""
 
-from logging.config import fileConfig
-
 from sqlalchemy import create_engine, pool
 from sqlalchemy.engine import URL
 
@@ -10,14 +8,8 @@ from weather_analytics.config import get_settings
 from weather_analytics.db.models import Base
 
 # Конфигурация Alembic из alembic.ini.
+# Логирование настраивается централизованно в logging_config.py.
 config = context.config
-
-# Сохраняем существующие логгеры приложения при запуске миграций.
-if config.config_file_name is not None:
-    fileConfig(
-        config.config_file_name,
-        disable_existing_loggers=False,
-    )
 
 # Метаданные SQLAlchemy используются командой revision --autogenerate.
 target_metadata = Base.metadata

@@ -92,6 +92,7 @@ services:
     restart: "no"
     volumes:
       - ../data/stormy_cities.csv:/app/data/stormy_cities.csv:ro
+      - ../logs:/app/logs
     command:
       - python
       - main.py

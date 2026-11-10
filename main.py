@@ -1,11 +1,11 @@
 """Точка входа ETL-приложения Stormy."""
 
 import argparse
-import logging
 from datetime import date, timedelta
 
 from weather_analytics.config import get_settings
 from weather_analytics.etl.pipeline import WeatherETL
+from weather_analytics.logging_config import StormyLogger
 
 
 def parse_args() -> argparse.Namespace:
@@ -44,10 +44,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     """Настраивает логирование и запускает выбранный ETL."""
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s | %(levelname)s | %(message)s',
-    )
+    StormyLogger()
 
     args = parse_args()
     settings = get_settings()
