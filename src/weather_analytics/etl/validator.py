@@ -51,9 +51,7 @@ def validate_historical_records(
     # переходы на летнее время создают расхождение на один час.
     expected_hours = expected_days * 24
 
-    actual_timestamps = [
-        record.get('weather_time') for record in hourly_records
-    ]
+    actual_timestamps = [record.get('weather_time') for record in hourly_records]
 
     # Сначала проверяем количество записей.
     if len(actual_timestamps) != expected_hours:
