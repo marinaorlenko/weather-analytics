@@ -104,6 +104,13 @@ jobs:
           git fetch --depth=1 origin main
           git checkout -B main FETCH_HEAD
 
+          # Обновляем образ ETL, но не запускаем загрузку данных.
+          # Docker использует кеш, если исходники не изменились.
+          docker compose --env-file .env \
+            -f deploy/compose.yaml \
+            build etl
+
+          # Запускаем только постоянно работающие сервисы.
           docker compose --env-file .env \
             -f deploy/compose.yaml \
             up -d --build --remove-orphans db dashboard bot

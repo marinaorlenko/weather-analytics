@@ -119,7 +119,8 @@ class OpenMeteoHTTPClient:
     ) -> float:
         """Вычисляет паузу перед повторным HTTP-запросом.
 
-        Учитывает экспоненциальную задержку и заголовок Retry-After.
+        Учитывает экспоненциальную задержку и Retry-After,
+        не превышая максимальное разрешённое время ожидания.
         """
         delay = min(
             HTTP_RETRY_BASE_DELAY * HTTP_RETRY_BACKOFF_FACTOR**attempt,
@@ -135,24 +136,26 @@ class OpenMeteoHTTPClient:
             return delay
 
         try:
-            return max(delay, float(retry_after))
+            requested_delay = float(retry_after)
         except ValueError:
-            pass
+            # Retry-After может содержать HTTP-дату.
+            try:
+                retry_date = parsedate_to_datetime(retry_after)
 
-        # Retry-After может содержать HTTP-дату,
-        # а не количество секунд.
-        try:
-            retry_date = parsedate_to_datetime(retry_after)
+                if retry_date.tzinfo is None:
+                    retry_date = retry_date.replace(tzinfo=UTC)
 
-            if retry_date.tzinfo is None:
-                retry_date = retry_date.replace(tzinfo=UTC)
+                requested_delay = (
+                    retry_date - datetime.now(UTC)
+                ).total_seconds()
 
-            remaining = (retry_date - datetime.now(UTC)).total_seconds()
+            except (TypeError, ValueError, OverflowError):
+                return delay
 
-            return max(delay, remaining)
-
-        except (TypeError, ValueError, OverflowError):
-            return delay
+        return min(
+            max(delay, requested_delay),
+            HTTP_RETRY_MAX_DELAY,
+        )
 
     def get(
         self,
