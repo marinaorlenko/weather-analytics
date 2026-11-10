@@ -12,9 +12,12 @@ from weather_analytics.db.models import Base
 # Конфигурация Alembic из alembic.ini.
 config = context.config
 
+# Сохраняем существующие логгеры приложения при запуске миграций.
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
-
+    fileConfig(
+        config.config_file_name,
+        disable_existing_loggers=False,
+    )
 
 # Метаданные SQLAlchemy используются командой revision --autogenerate.
 target_metadata = Base.metadata
