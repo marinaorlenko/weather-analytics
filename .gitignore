@@ -39,3 +39,30 @@ logs/
 
 # Bot
 data/stormy_users.pkl
+
+# Dubai research: generated figures
+/reports/figures/dubai/*.png
+
+# Figures used in the analytical report
+!/reports/figures/dubai/dubai_seasonal_temperature.png
+!/reports/figures/dubai/dubai_seasonal_precipitation.png
+!/reports/figures/dubai/dubai_seasonal_humidity_wind.png
+!/reports/figures/dubai/dubai_yearly_weather_dynamics.png
+!/reports/figures/dubai/dubai_yearly_precipitation.png
+!/reports/figures/dubai/dubai_extreme_precipitation.png
+!/reports/figures/dubai/dubai_monthly_precipitation_heatmap.png
+!/reports/figures/dubai/dubai_yearly_temperature_anomalies.png
+!/reports/figures/dubai/dubai_extreme_heat_days.png
+!/reports/figures/dubai/dubai_yearly_heatwaves.png
+!/reports/figures/dubai/dubai_weather_correlations.png
+!/reports/figures/dubai/dubai_temperature_around_rain.png
+!/reports/figures/dubai/dubai_climate_trends_theil_sen.png
+!/reports/figures/dubai/dubai_temperature_precipitation_permutation_test.png
+!/reports/figures/dubai/dubai_rainy_dry_temperature_bootstrap.png
+!/reports/figures/dubai/cloud_seeding_precipitation_correlation.png
+
+# Jupyter temporary files
+.ipynb_checkpoints/
+
+# Cloud seeding parser: technical error log
+/notebooks/data/external/uae_cloud_seeding_errors_auto.csv

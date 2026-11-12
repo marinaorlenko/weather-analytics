@@ -1,1015 +1,3 @@
-# """Форматирование погодных данных для двуязычного бота Stormy.
-
-# Преобразует текущие, суточные и почасовые данные в сообщения
-# на русском и английском языках. Использует готовые расчётные
-# функции и справочники локализации.
-
-# Не выполняет API-запросы и не управляет Telegram-диалогами.
-# """
-
-# from datetime import date
-# from html import escape
-
-# from weather_analytics.bot.messages import (
-#     LABELS,
-#     MESSAGES,
-#     MONTHS_EN,
-#     MONTHS_RU,
-#     WEEKDAYS_EN,
-#     WEEKDAYS_RU,
-# )
-# from weather_analytics.bot.weather_calculations import (
-#     compact_event_hours,
-#     get_daily_value,
-#     get_hourly_average,
-#     get_hourly_events,
-#     get_hourly_range,
-#     get_hourly_values,
-#     get_intensity_intervals,
-#     get_period_temperature,
-# )
-
-
-# def format_number(
-#     value,
-#     digits: int = 1,
-#     signed: bool = False,
-# ) -> str:
-#     """Форматирует число с точностью и необязательным знаком плюса."""
-#     if value is None:
-#         return '—'
-
-#     number = round(float(value), digits)
-
-#     if number == 0:
-#         number = 0.0
-
-#     text = (
-#         f'{number:+.{digits}f}'
-#         if signed
-#         else f'{number:.{digits}f}'
-#     )
-
-#     if digits:
-#         text = text.rstrip('0').rstrip('.')
-
-#     return text
-
-
-# def format_date(value: str, language: str) -> str:
-#     """Преобразует ISO-дату в локализованный формат."""
-#     day = date.fromisoformat(value[:10])
-
-#     if language == 'ru':
-#         weekday = WEEKDAYS_RU[day.weekday()]
-
-#         return (
-#             f'{weekday.capitalize()}, '
-#             f'{day.day} {MONTHS_RU[day.month]} '
-#             f'{day.year} года'
-#         )
-
-#     weekday = WEEKDAYS_EN[day.weekday()]
-
-#     return (
-#         f'{weekday}, '
-#         f'{MONTHS_EN[day.month]} '
-#         f'{day.day}, {day.year}'
-#     )
-
-
-# def format_value(
-#     value,
-#     unit: str = '',
-#     digits: int = 1,
-#     signed: bool = False,
-# ) -> str:
-#     """Добавляет единицу измерения к числовому значению."""
-#     number = format_number(value, digits, signed)
-
-#     return f'{number} {unit}'.strip()
-
-
-# def format_current(
-#     current: dict,
-#     metrics: tuple,
-#     language: str,
-# ) -> list[str]:
-#     """Формирует строки текущих погодных показателей."""
-#     ru = language == 'ru'
-#     lines = []
-
-#     fields = {
-#         'temperature': 'temperature_2m',
-#         'feels_like': 'apparent_temperature',
-#         'wind': 'wind_speed_10m',
-#         'rain': 'rain',
-#         'snow': 'snowfall',
-#         'precipitation': 'precipitation',
-#         'humidity': 'relative_humidity_2m',
-#         'cloud': 'cloud_cover',
-#         'pressure': 'pressure_msl',
-#         'uv': 'uv_index',
-#     }
-
-#     for metric in metrics:
-#         if metric not in LABELS:
-#             continue
-
-#         value = current.get(fields.get(metric))
-
-#         if value is None:
-#             continue
-
-#         label = LABELS[metric][0 if ru else 1]
-#         unit = LABELS[metric][2]
-
-#         if not ru:
-#             unit = {
-#                 'км/ч': 'km/h',
-#                 'мм': 'mm',
-#                 'гПа': 'hPa',
-#             }.get(unit, unit)
-
-#         digits = (
-#             1
-#             if metric in (
-#                 'temperature',
-#                 'feels_like',
-#                 'rain',
-#                 'snow',
-#                 'precipitation',
-#                 'uv',
-#             )
-#             else 0
-#         )
-
-#         signed = metric in (
-#             'temperature',
-#             'feels_like',
-#         )
-
-#         lines.append(
-#             f'{label}: '
-#             f'{format_value(value, unit, digits, signed)}'
-#         )
-
-#     return lines
-
-
-# def format_wind_direction(
-#     value,
-#     language: str,
-# ) -> str | None:
-#     """Преобразует направление ветра в сторону света и стрелку."""
-#     if value is None:
-#         return None
-
-#     # Метеорологическое направление указывает,
-#     # откуда дует ветер.
-#     degrees = float(value) % 360
-#     sector = int((degrees + 22.5) // 45) % 8
-
-#     names_ru = (
-#         'С (северный)',
-#         'СВ (северо-восточный)',
-#         'В (восточный)',
-#         'ЮВ (юго-восточный)',
-#         'Ю (южный)',
-#         'ЮЗ (юго-западный)',
-#         'З (западный)',
-#         'СЗ (северо-западный)',
-#     )
-
-#     names_en = (
-#         'N', 'NE', 'E', 'SE',
-#         'S', 'SW', 'W', 'NW',
-#     )
-
-#     # Стрелка показывает направление движения ветра,
-#     # противоположное метеорологическому направлению.
-#     arrows = (
-#         '↓', '↙', '←', '↖',
-#         '↑', '↗', '→', '↘',
-#     )
-
-#     name = (
-#         names_ru[sector]
-#         if language == 'ru'
-#         else names_en[sector]
-#     )
-
-#     return f'{name} {arrows[sector]}'
-
-
-# def format_daily(
-#     daily: dict,
-#     hourly: dict,
-#     day: str,
-#     index: int,
-#     metrics: tuple,
-#     language: str,
-#     compact: bool = False,
-# ) -> list[str]:
-#     """Оформляет суточные показатели выбранных погодных метрик."""
-#     ru = language == 'ru'
-#     lines = []
-
-#     def add(
-#         label_ru: str,
-#         label_en: str,
-#         value,
-#         unit: str = '',
-#         digits: int = 1,
-#         signed: bool = False,
-#     ) -> None:
-#         """Добавляет показатель, если его значение доступно."""
-#         if value is None:
-#             return
-
-#         label = label_ru if ru else label_en
-
-#         lines.append(
-#             f'{label}: '
-#             f'{format_value(value, unit, digits, signed)}'
-#         )
-
-#     if 'temperature' in metrics:
-#         minimum = get_daily_value(
-#             daily,
-#             'temperature_2m_min',
-#             index,
-#         )
-
-#         maximum = get_daily_value(
-#             daily,
-#             'temperature_2m_max',
-#             index,
-#         )
-
-#         if minimum is not None or maximum is not None:
-#             lines.append(
-#                 '🌡️ Температура'
-#                 if ru
-#                 else '🌡️ Temperature'
-#             )
-
-#             add(
-#                 '  Минимальная',
-#                 '  Minimum',
-#                 minimum,
-#                 '°C',
-#                 signed=True,
-#             )
-
-#             add(
-#                 '  Максимальная',
-#                 '  Maximum',
-#                 maximum,
-#                 '°C',
-#                 signed=True,
-#             )
-
-#             # Для одного дня показываем среднюю температуру
-#             # по четырём периодам местных суток.
-#             if not compact:
-#                 periods = (
-#                     (0, 5, '  Ночью', '  Night'),
-#                     (6, 11, '  Утром', '  Morning'),
-#                     (12, 17, '  Днём', '  Afternoon'),
-#                     (18, 23, '  Вечером', '  Evening'),
-#                 )
-
-#                 for (
-#                     start_hour,
-#                     end_hour,
-#                     label_ru,
-#                     label_en,
-#                 ) in periods:
-#                     value = get_period_temperature(
-#                         hourly,
-#                         day,
-#                         start_hour,
-#                         end_hour,
-#                     )
-
-#                     add(
-#                         label_ru,
-#                         label_en,
-#                         value,
-#                         '°C',
-#                         signed=True,
-#                     )
-
-#     if 'feels_like' in metrics:
-#         minimum, maximum = get_hourly_range(
-#             hourly,
-#             day,
-#             'apparent_temperature',
-#         )
-
-#         if minimum is None:
-#             minimum = get_daily_value(
-#                 daily,
-#                 'apparent_temperature_min',
-#                 index,
-#             )
-
-#         if maximum is None:
-#             maximum = get_daily_value(
-#                 daily,
-#                 'apparent_temperature_max',
-#                 index,
-#             )
-
-#         if minimum is not None or maximum is not None:
-#             lines.append(
-#                 '🤗 Ощущается как'
-#                 if ru
-#                 else '🤗 Feels like'
-#             )
-
-#             add(
-#                 '  Минимальная',
-#                 '  Minimum',
-#                 minimum,
-#                 '°C',
-#                 signed=True,
-#             )
-
-#             add(
-#                 '  Максимальная',
-#                 '  Maximum',
-#                 maximum,
-#                 '°C',
-#                 signed=True,
-#             )
-
-#     if 'wind' in metrics:
-#         speed = get_daily_value(
-#             daily,
-#             'wind_speed_10m_max',
-#             index,
-#         )
-
-#         gusts = get_daily_value(
-#             daily,
-#             'wind_gusts_10m_max',
-#             index,
-#         )
-
-#         direction = get_daily_value(
-#             daily,
-#             'wind_direction_10m_dominant',
-#             index,
-#         )
-
-#         unit = 'км/ч' if ru else 'km/h'
-
-#         if any(
-#             value is not None
-#             for value in (speed, gusts, direction)
-#         ):
-#             lines.append(
-#                 '🌬️ Ветер' if ru else '🌬️ Wind'
-#             )
-
-#             add(
-#                 '  Максимальная скорость',
-#                 '  Maximum speed',
-#                 speed,
-#                 unit,
-#                 0,
-#             )
-
-#             add(
-#                 '  Максимальные порывы',
-#                 '  Maximum gusts',
-#                 gusts,
-#                 unit,
-#                 0,
-#             )
-
-#             formatted_direction = format_wind_direction(
-#                 direction,
-#                 language,
-#             )
-
-#             if formatted_direction:
-#                 label = (
-#                     '  Направление'
-#                     if ru
-#                     else '  Direction'
-#                 )
-
-#                 lines.append(
-#                     f'{label}: {formatted_direction}'
-#                 )
-
-#     if 'precipitation' in metrics:
-#         amount = get_daily_value(
-#             daily,
-#             'precipitation_sum',
-#             index,
-#         )
-
-#         probability = get_daily_value(
-#             daily,
-#             'precipitation_probability_max',
-#             index,
-#         )
-
-#         hours = get_daily_value(
-#             daily,
-#             'precipitation_hours',
-#             index,
-#         )
-
-#         if any(
-#             value is not None
-#             for value in (amount, probability, hours)
-#         ):
-#             lines.append(
-#                 '🌧️ Осадки'
-#                 if ru
-#                 else '🌧️ Precipitation'
-#             )
-
-#             add(
-#                 '  Количество за сутки',
-#                 '  Daily total',
-#                 amount,
-#                 'мм' if ru else 'mm',
-#             )
-
-#             add(
-#                 '  Максимальная вероятность',
-#                 '  Maximum probability',
-#                 probability,
-#                 '%',
-#                 0,
-#             )
-
-#             if not compact:
-#                 add(
-#                     '  Продолжительность',
-#                     '  Duration',
-#                     hours,
-#                     'ч' if ru else 'h',
-#                 )
-
-#     hourly_metrics = (
-#         (
-#             'humidity',
-#             'relative_humidity_2m',
-#             '%',
-#         ),
-#         (
-#             'cloud',
-#             'cloud_cover',
-#             '%',
-#         ),
-#         (
-#             'pressure',
-#             'pressure_msl',
-#             'гПа' if ru else 'hPa',
-#         ),
-#     )
-
-#     for metric, key, unit in hourly_metrics:
-#         if metric not in metrics:
-#             continue
-
-#         average = get_hourly_average(
-#             hourly,
-#             day,
-#             key,
-#         )
-
-#         minimum, maximum = get_hourly_range(
-#             hourly,
-#             day,
-#             key,
-#         )
-
-#         if average is None:
-#             continue
-
-#         lines.append(
-#             LABELS[metric][0 if ru else 1]
-#         )
-
-#         add(
-#             '  Среднее за сутки',
-#             '  Daily average',
-#             average,
-#             unit,
-#             0,
-#         )
-
-#         if not compact:
-#             add(
-#                 '  Минимум',
-#                 '  Minimum',
-#                 minimum,
-#                 unit,
-#                 0,
-#             )
-
-#             add(
-#                 '  Максимум',
-#                 '  Maximum',
-#                 maximum,
-#                 unit,
-#                 0,
-#             )
-
-#     if 'uv' in metrics:
-#         uv = get_daily_value(
-#             daily,
-#             'uv_index_max',
-#             index,
-#         )
-
-#         add(
-#             '☀️ Максимальный УФ-индекс',
-#             '☀️ Maximum UV index',
-#             uv,
-#         )
-
-#     return lines
-
-
-# def format_current_phenomena(
-#     current: dict,
-#     metrics: tuple,
-#     language: str,
-# ) -> list[str]:
-#     """Оформляет текущий дождь, снег и грозу отдельно."""
-#     ru = language == 'ru'
-#     lines = []
-
-#     for metric, key, unit, icon, title in (
-#         (
-#             'rain',
-#             'rain',
-#             'мм' if ru else 'mm',
-#             '🌧️',
-#             'Дождь' if ru else 'Rain',
-#         ),
-#         (
-#             'snow',
-#             'snowfall',
-#             'см' if ru else 'cm',
-#             '❄️',
-#             'Снег' if ru else 'Snow',
-#         ),
-#     ):
-#         if metric not in metrics:
-#             continue
-
-#         value = current.get(key)
-
-#         if value is None:
-#             lines.append(
-#                 f'{icon} {title}: '
-#                 + ('нет данных' if ru else 'no data')
-#             )
-#         else:
-#             lines.append(
-#                 f'{icon} {title}: '
-#                 f'{format_value(value, unit)}'
-#             )
-
-#     if 'thunderstorm' in metrics:
-#         code = current.get('weather_code')
-
-#         if code is None:
-#             status = 'нет данных' if ru else 'no data'
-
-#         elif code in (95, 96, 99):
-#             status = (
-#                 'наблюдается'
-#                 if ru
-#                 else 'indicated'
-#             )
-
-#         else:
-#             status = (
-#                 'не отмечена'
-#                 if ru
-#                 else 'not indicated'
-#             )
-
-#         title = 'Гроза' if ru else 'Thunderstorm'
-
-#         lines.append(
-#             f'⚡ {title}: {status}'
-#         )
-
-#     return lines
-
-
-# def format_phenomena(
-#     daily: dict,
-#     hourly: dict,
-#     day: str,
-#     index: int,
-#     metrics: tuple,
-#     language: str,
-#     historical: bool,
-# ) -> list[str]:
-#     """Формирует ответы о дожде, снеге и грозе."""
-#     ru = language == 'ru'
-#     lines = []
-
-#     phenomena = (
-#         (
-#             'rain',
-#             'rain_sum',
-#             'мм' if ru else 'mm',
-#             '🌧️',
-#         ),
-#         (
-#             'snow',
-#             'snowfall_sum',
-#             'см' if ru else 'cm',
-#             '❄️',
-#         ),
-#         (
-#             'thunderstorm',
-#             'weather_code',
-#             '',
-#             '⚡',
-#         ),
-#     )
-
-#     for metric, key, unit, icon in phenomena:
-#         if metric not in metrics:
-#             continue
-
-#         titles = {
-#             'rain': ('Дождь', 'Rain'),
-#             'snow': ('Снег', 'Snow'),
-#             'thunderstorm': ('Гроза', 'Thunderstorm'),
-#         }
-
-#         title = titles[metric][0 if ru else 1]
-#         lines.append(f'{icon} {title}')
-
-#         if metric == 'thunderstorm':
-#             codes = get_hourly_values(
-#                 hourly,
-#                 day,
-#                 'weather_code',
-#             )
-
-#             daily_code = get_daily_value(
-#                 daily,
-#                 'weather_code',
-#                 index,
-#             )
-
-#             if not codes and daily_code is None:
-#                 lines.append(
-#                     '  Нет данных о грозах'
-#                     if ru
-#                     else '  Thunderstorm data unavailable'
-#                 )
-#                 continue
-
-#             detected = any(
-#                 code in (95, 96, 99)
-#                 for code in codes
-#             )
-
-#             detected = (
-#                 detected
-#                 or daily_code in (95, 96, 99)
-#             )
-
-#             if detected:
-#                 lines.append(
-#                     '  Грозовая активность отмечена в данных'
-#                     if ru
-#                     else '  Thunderstorm activity indicated by the data'
-#                 )
-
-#             elif ru:
-#                 lines.append(
-#                     '  Гроза не отмечена в данных'
-#                     if historical
-#                     else '  По доступным данным гроза не ожидается'
-#                 )
-
-#             else:
-#                 lines.append(
-#                     '  No thunderstorm indicated by available data'
-#                 )
-
-#             hours = get_hourly_events(
-#                 hourly,
-#                 day,
-#                 'thunderstorm',
-#             )
-
-#         else:
-#             amount = get_daily_value(
-#                 daily,
-#                 key,
-#                 index,
-#             )
-
-#             if amount is None:
-#                 lines.append(
-#                     '  Нет данных'
-#                     if ru
-#                     else '  Data unavailable'
-#                 )
-#                 continue
-
-#             if amount > 0:
-#                 label = (
-#                     '  За сутки'
-#                     if ru
-#                     else '  Daily total'
-#                 )
-
-#                 lines.append(
-#                     f'{label}: '
-#                     f'{format_value(amount, unit)}'
-#                 )
-
-#             elif ru:
-#                 lines.append(
-#                     '  Не отмечен в данных'
-#                     if historical
-#                     else '  Не прогнозируется'
-#                 )
-
-#             else:
-#                 lines.append(
-#                     '  Not indicated by available data'
-#                 )
-
-#             hours = get_hourly_events(
-#                 hourly,
-#                 day,
-#                 metric,
-#             )
-
-#         if metric in ('rain', 'snow'):
-#             intervals = get_intensity_intervals(
-#                 hourly,
-#                 day,
-#                 metric,
-#                 language,
-#             )
-
-#             if intervals:
-#                 unit_per_hour = (
-#                     'мм/ч'
-#                     if metric == 'rain' and ru
-#                     else (
-#                         'mm/h'
-#                         if metric == 'rain'
-#                         else 'см/ч' if ru else 'cm/h'
-#                     )
-#                 )
-
-#                 lines.append(
-#                     '  По часам (местное время):'
-#                     if ru
-#                     else '  Hourly intervals (local time):'
-#                 )
-
-#                 for period, level, peak in intervals:
-#                     qualifier = 'до' if ru else 'up to'
-
-#                     lines.append(
-#                         f'  • {period} — {level}, '
-#                         f'{qualifier} '
-#                         f'{format_value(peak, unit_per_hour)}'
-#                     )
-
-#             elif hours:
-#                 label = (
-#                     '  Часы (местное время)'
-#                     if ru
-#                     else '  Hours (local time)'
-#                 )
-
-#                 lines.append(
-#                     f'{label}: '
-#                     f'{compact_event_hours(hours)}'
-#                 )
-
-#         elif hours:
-#             label = (
-#                 '  Часы (местное время)'
-#                 if ru
-#                 else '  Hours (local time)'
-#             )
-
-#             lines.append(
-#                 f'{label}: '
-#                 f'{compact_event_hours(hours)}'
-#             )
-
-#     return lines
-
-
-# def format_weather(
-#     city: dict,
-#     query,
-#     result: dict,
-#     language: str,
-# ) -> str:
-#     """Составляет локализованный ответ о погоде."""
-#     language = (
-#         language
-#         if language in MESSAGES
-#         else 'en'
-#     )
-
-#     ru = language == 'ru'
-
-#     metrics = tuple(
-#         query.metrics or (
-#             'temperature',
-#             'feels_like',
-#             'wind',
-#             'precipitation',
-#             'humidity',
-#         )
-#     )
-
-#     city_name = city.get('name', '')
-#     country = city.get('country', '')
-
-#     location = escape(
-#         ', '.join(
-#             part
-#             for part in (city_name, country)
-#             if part
-#         )
-#     )
-
-#     kind = result.get('kind')
-#     raw_date = str(result.get('date', ''))
-
-#     if kind == 'now':
-#         heading = (
-#             '🌤️ Погода сейчас'
-#             if ru
-#             else '🌤️ Current weather'
-#         )
-
-#     elif kind in ('week', 'weekend'):
-#         heading = (
-#             '🌤️ Прогноз погоды'
-#             if ru
-#             else '🌤️ Weather forecast'
-#         )
-
-#     else:
-#         heading = (
-#             '🌤️ Погода на выбранную дату'
-#             if ru
-#             else '🌤️ Weather for selected date'
-#         )
-
-#     lines = [
-#         heading,
-#         f'📍 {location}',
-#     ]
-
-#     if raw_date and kind not in ('week', 'weekend'):
-#         try:
-#             lines.append(
-#                 f'📅 {format_date(raw_date, language)}'
-#             )
-
-#         except ValueError:
-#             lines.append(
-#                 f'📅 {raw_date}'
-#             )
-
-#     lines.append('━━━━━━━━━━━━━━━━━━')
-
-#     if kind == 'now':
-#         current = result.get('current') or {}
-
-#         content = format_current(
-#             current,
-#             metrics,
-#             language,
-#         )
-
-#         timestamp = current.get('time')
-
-#         if timestamp:
-#             lines.append(
-#                 f"🕒 {'Время данных' if ru else 'Data time'}: "
-#                 f'{str(timestamp)[11:16]}'
-#             )
-
-#             lines.append('')
-
-#         lines.extend(content)
-
-#         lines.extend(
-#             format_current_phenomena(
-#                 current,
-#                 metrics,
-#                 language,
-#             )
-#         )
-
-#     else:
-#         daily = result.get('daily') or {}
-#         hourly = result.get('hourly') or {}
-#         days = daily.get('time') or []
-
-#         content = []
-
-#         for index, day in enumerate(days):
-#             if kind in ('week', 'weekend'):
-#                 try:
-#                     day_label = format_date(
-#                         day,
-#                         language,
-#                     )
-
-#                 except ValueError:
-#                     day_label = str(day)
-
-#                 content.append(
-#                     f'📅 {day_label}'
-#                 )
-
-#             day_lines = format_daily(
-#                 daily=daily,
-#                 hourly=hourly,
-#                 day=day,
-#                 index=index,
-#                 metrics=metrics,
-#                 language=language,
-#                 compact=kind in ('week', 'weekend'),
-#             )
-
-#             content.extend(day_lines)
-
-#             content.extend(
-#                 format_phenomena(
-#                     daily,
-#                     hourly,
-#                     day,
-#                     index,
-#                     metrics,
-#                     language,
-#                     result.get('historical', False),
-#                 )
-#             )
-
-#             if (
-#                 kind in ('week', 'weekend')
-#                 and index < len(days) - 1
-#             ):
-#                 content.extend([
-#                     '',
-#                     '────────────',
-#                     '',
-#                 ])
-
-#         lines.extend(content)
-
-#     if not content:
-#         lines.append(
-#             MESSAGES[language]['no_data']
-#         )
-
-#     # Сохраняем обязательную атрибуцию Open-Meteo
-#     # и ссылку на лицензию данных.
-#     attribution = (
-#         '🌦️ Данные о погоде: '
-#         if ru
-#         else '🌦️ Weather data: '
-#     ) + (
-#         '<a href="https://open-meteo.com/">Open-Meteo</a> · '
-#         '<a href="https://creativecommons.org/licenses/by/4.0/">'
-#         'CC BY 4.0</a>'
-#     )
-
-#     lines.extend([
-#         '',
-#         '━━━━━━━━━━━━━━━━━━',
-#         attribution,
-#     ])
-
-#     return '\n'.join(lines).strip()
-
-
 """Форматирование погодных данных для двуязычного бота Stormy.
 
 Преобразует текущие, суточные и почасовые данные в сообщения
@@ -1704,7 +692,11 @@ def format_weather(
     result: dict,
     language: str,
 ) -> str:
-    """Составляет локализованный ответ о погоде."""
+    """Составляет локализованный ответ о погоде.
+
+    Поддерживает текущую погоду, отдельную дату,
+    выходные и многодневный прогноз до семи дней.
+    """
     language = language if language in MESSAGES else 'en'
     ru = language == 'ru'
 
@@ -1721,23 +713,35 @@ def format_weather(
 
     location = escape(
         ', '.join(
-            part for part in (city.get('name', ''), city.get('country', '')) if part
+            part
+            for part in (
+                city.get('name', ''),
+                city.get('country', ''),
+            )
+            if part
         )
     )
 
     kind = result.get('kind')
     raw_date = str(result.get('date', ''))
 
+    # Все виды многодневного прогноза используют
+    # одинаковую структуру вывода.
+    multi_day = kind in ('days', 'week', 'weekend')
+
     if kind == 'now':
         heading = '🌤️ Погода сейчас' if ru else '🌤️ Current weather'
-    elif kind in ('week', 'weekend'):
+    elif multi_day:
         heading = '🌤️ Прогноз погоды' if ru else '🌤️ Weather forecast'
     else:
         heading = '🌤️ Погода на выбранную дату' if ru else '🌤️ Weather for selected date'
 
     lines = [heading, f'📍 {location}']
 
-    if raw_date and kind not in ('week', 'weekend'):
+    # Для отдельной даты показываем её в заголовке.
+    # Для многодневного прогноза дата будет указана
+    # отдельно перед каждым днём.
+    if raw_date and not multi_day:
         try:
             lines.append(f'📅 {format_date(raw_date, language)}')
         except ValueError:
@@ -1753,6 +757,7 @@ def format_weather(
             metrics,
             language,
         )
+
         content.extend(
             format_current_phenomena(
                 current,
@@ -1762,10 +767,10 @@ def format_weather(
         )
 
         timestamp = current.get('time')
+
         if timestamp:
-            lines.append(
-                f'🕒 {"Время данных" if ru else "Data time"}: {_local_time(timestamp)}'
-            )
+            time_label = 'Время данных' if ru else 'Data time'
+            lines.append(f'🕒 {time_label}: {_local_time(timestamp)}')
             lines.append('')
 
         lines.extend(content)
@@ -1777,9 +782,14 @@ def format_weather(
         content = []
 
         for index, day in enumerate(days):
-            if kind in ('week', 'weekend'):
+            # Для многодневного прогноза показываем
+            # дату каждого дня, включая сегодняшний.
+            if multi_day:
                 try:
-                    day_label = format_date(day, language)
+                    day_label = format_date(
+                        day,
+                        language,
+                    )
                 except ValueError:
                     day_label = str(day)
 
@@ -1793,9 +803,10 @@ def format_weather(
                     index,
                     metrics,
                     language,
-                    compact=kind in ('week', 'weekend'),
+                    compact=multi_day,
                 )
             )
+
             content.extend(
                 format_phenomena(
                     daily,
@@ -1808,8 +819,17 @@ def format_weather(
                 )
             )
 
-            if kind in ('week', 'weekend') and index < len(days) - 1:
-                content.extend(['', '────────────', ''])
+            # Разделяем дни только в многодневном
+            # прогнозе, не добавляя лишний разделитель
+            # после последнего дня.
+            if multi_day and index < len(days) - 1:
+                content.extend(
+                    [
+                        '',
+                        '────────────',
+                        '',
+                    ]
+                )
 
         lines.extend(content)
 
@@ -1818,10 +838,18 @@ def format_weather(
 
     # Обязательная атрибуция источника и лицензии данных.
     attribution = ('🌦️ Данные о погоде: ' if ru else '🌦️ Weather data: ') + (
-        '<a href="https://open-meteo.com/">Open-Meteo</a> · '
+        '<a href="https://open-meteo.com/">'
+        'Open-Meteo</a> · '
         '<a href="https://creativecommons.org/licenses/by/4.0/">'
         'CC BY 4.0</a>'
     )
 
-    lines.extend(['', '━━━━━━━━━━━━━━━━━━', attribution])
+    lines.extend(
+        [
+            '',
+            '━━━━━━━━━━━━━━━━━━',
+            attribution,
+        ]
+    )
+
     return '\n'.join(lines).strip()

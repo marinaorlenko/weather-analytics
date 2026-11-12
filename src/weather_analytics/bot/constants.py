@@ -88,3 +88,25 @@ DAY_PERIODS = (
     (12, 17, '  Днём', '  Afternoon'),
     (18, 23, '  Вечером', '  Evening'),
 )
+
+# Анимированные стикеры
+STORMY_STICKER_IDS = {
+    'welcome': (
+        'CAACAgIAAxkBAAFXosxq9eFceQlPPwcbReKwsQPTZv8mSAACHKYAAjsjqEvY7493cEucWD0E'
+    ),
+    'thinking': (
+        'CAACAgIAAxkBAAFXospq9eFSuxDcZr2pScy4QSrnnrf0_QACc7MAAv9PsUv8H-7HkMocyT0E'
+    ),
+    'sunny': (
+        'CAACAgIAAxkBAAFXosZq9eFITzd3LQdnXDa4sFhU9kdDZwAC57AAAigqsEsp6F13TcY8Kz0E'
+    ),
+    'rain': (
+        'CAACAgIAAxkBAAFXor5q9eEeEVl2_HHnp4obko6vJ_XCsgACia4AAuLWsUs6ChVDvm4fMj0E'
+    ),
+    'snow': (
+        'CAACAgIAAxkBAAFXosJq9eE08YMmrD9ZbMp-vF6U08sZ3gACDKoAApnMsEuQVTZ5ib6wVz0E'
+    ),
+    'thunderstorm': (
+        'CAACAgIAAxkBAAFXosRq9eE-wYcIsHbY4O4XSG7rSDYqswACFrIAAvngsEtDVyYZ8ExSPD0E'
+    ),
+}

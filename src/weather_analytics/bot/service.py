@@ -16,8 +16,6 @@ from weather_analytics.bot.constants import (
     SUNDAY_WEEKDAY,
     WEEK_FORECAST_DAYS,
 )
-
-# from weather_analytics.bot.city_search import CitySearchService
 from weather_analytics.bot.parser import WeatherQuery, resolve_date
 
 
@@ -31,36 +29,6 @@ class WeatherService:
             client: Клиент для получения данных Open-Meteo.
         """
         self.client = client
-
-    # def find_cities(
-    #     self,
-    #     name: str,
-    #     language: str,
-    # ) -> list[dict[str, Any]]:
-    #     """Делегирует поиск городов специализированному сервису.
-
-    #     Временный метод совместимости с telegram_bot.py.
-    #     После обновления обработчиков будет удалён.
-    #     """
-    #     return CitySearchService(self.client).find_cities(
-    #         name,
-    #         language,
-    #     )
-
-    # def suggest_cities(
-    #     self,
-    #     name: str,
-    #     language: str,
-    # ) -> list[dict[str, Any]]:
-    #     """Делегирует поиск похожих городов.
-
-    #     Временный метод совместимости с telegram_bot.py.
-    #     После обновления обработчиков будет удалён.
-    #     """
-    #     return CitySearchService(self.client).suggest_cities(
-    #         name,
-    #         language,
-    #     )
 
     def get_weather(
         self,
@@ -82,7 +50,8 @@ class WeatherService:
 
         Raises:
             ValueError: С кодом year_required, invalid_date,
-                future_range, past_range или mixed_range.
+                forecast_days_limit, future_range, past_range
+                или mixed_range.
         """
         # Часовой пояс берём из результата геокодирования.
         # При его отсутствии используем UTC.
@@ -98,10 +67,22 @@ class WeatherService:
                 'current': data['current'],
             }
 
-        if query.period == 'week':
-            # Семь календарных дней, начиная с сегодняшнего.
+        if query.period == 'days':
+            # Проверяем явно запрошенное количество дней.
+            # Нельзя молча сокращать период до семи дней.
+            forecast_days = query.forecast_days
+
+            if forecast_days is None or not 1 <= forecast_days <= WEEK_FORECAST_DAYS:
+                raise ValueError('forecast_days_limit')
+
+            # Сегодня — первый день прогноза.
             start = today
-            end = today + timedelta(days=6)
+            end = today + timedelta(days=forecast_days - 1)
+
+        elif query.period == 'week':
+            # Семь календарных дней, включая сегодняшний.
+            start = today
+            end = today + timedelta(days=WEEK_FORECAST_DAYS - 1)
 
         elif query.period == 'weekend':
             # Ближайшие выходные. В воскресенье показываем
@@ -119,14 +100,14 @@ class WeatherService:
                 end = start + timedelta(days=1)
 
         else:
-            # Здесь разрешается конкретная календарная дата.
-            # Для неоднозначной даты без года resolve_date()
-            # выбрасывает year_required до обращения к API.
+            # Конкретная дата, день недели или относительная
+            # дата разрешаются существующей логикой парсера.
+            # Неоднозначная дата без года требует уточнения.
             target = resolve_date(query, today)
             start = end = target
 
-        # Максимальная доступная глубина прогноза
-        # задаётся общей константой API.
+        # Не запрашиваем прогноз дальше установленного
+        # максимального горизонта в семь календарных дней.
         if end > today + timedelta(days=WEEK_FORECAST_DAYS - 1):
             raise ValueError('future_range')
 
@@ -152,7 +133,9 @@ class WeatherService:
         )
 
         return {
-            'kind': (query.period if query.period in ('week', 'weekend') else 'day'),
+            'kind': (
+                query.period if query.period in ('days', 'week', 'weekend') else 'day'
+            ),
             'date': start,
             'daily': data['daily'],
             'hourly': data.get('hourly') or {},

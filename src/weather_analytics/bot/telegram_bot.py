@@ -12,6 +12,7 @@ import logging
 import re
 from dataclasses import replace
 from datetime import date, datetime
+from math import ceil
 from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -40,6 +41,7 @@ from weather_analytics.bot.city_search import CitySearchService
 from weather_analytics.bot.constants import (
     CITY_SELECTION_LIMIT,
     MAX_MESSAGE_LENGTH,
+    STORMY_STICKER_IDS,
     YEAR_SELECTION_COUNT,
 )
 from weather_analytics.bot.messages import MESSAGES
@@ -49,6 +51,96 @@ from weather_analytics.bot.weather_formatter import format_weather
 from weather_analytics.config import get_settings
 
 LOGGER = logging.getLogger(__name__)
+
+
+async def send_stormy_sticker(update: Update, mood: str) -> bool:
+    """Отправляет видеостикер Stormy по сохранённому Telegram file_id."""
+    message = get_message(update)
+    sticker_id = STORMY_STICKER_IDS.get(mood)
+    if message is None or sticker_id is None:
+        LOGGER.warning('Стикер Stormy недоступен: %s', mood)
+        return False
+
+    await message.reply_sticker(sticker=sticker_id)
+    return True
+
+
+def weather_codes(result: dict[str, Any]) -> list[int]:
+    """Возвращает доступные коды WMO для периода погодного ответа."""
+    if result.get('kind') == 'now':
+        raw_codes = [(result.get('current') or {}).get('weather_code')]
+    else:
+        raw_codes = (result.get('daily') or {}).get('weather_code') or []
+
+    if not isinstance(raw_codes, (list, tuple)):
+        raw_codes = [raw_codes]
+
+    return [
+        int(code)
+        for code in raw_codes
+        if isinstance(code, (int, float)) and not isinstance(code, bool)
+    ]
+
+
+def classify_weather_code(code: int) -> str:
+    """Определяет погодное явление по коду WMO Open-Meteo."""
+    if code in (95, 96, 99):
+        return 'thunderstorm'
+    if code in (71, 73, 75, 77, 85, 86):
+        return 'snow'
+    if code in (51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82):
+        return 'rain'
+    if code in (0, 1):
+        return 'sunny'
+    return 'welcome'
+
+
+def query_mood(query: WeatherQuery, result: dict[str, Any]) -> str | None:
+    """Показывает тематический стикер лишь при подтверждении явления WMO.
+
+    Отсутствие подходящего кода не считается подтверждением осадков.
+    Для общих прогнозов используется существующий выбор по преобладанию.
+    """
+    if not query.metrics:
+        return weather_mood(result)
+
+    metrics = {str(metric).lower() for metric in query.metrics}
+    target = None
+    if metrics & {'thunderstorm', 'thunderstorms', 'lightning'}:
+        target = 'thunderstorm'
+    elif metrics & {'snow', 'snowfall', 'snow_depth'}:
+        target = 'snow'
+    elif metrics & {
+        'rain',
+        'showers',
+        'precipitation',
+        'precipitation_sum',
+        'precipitation_probability',
+    }:
+        target = 'rain'
+
+    if target is None:
+        return None
+
+    # Проверяем реальные погодные коды, а не слова в вопросе.
+    return (
+        target
+        if any(classify_weather_code(code) == target for code in weather_codes(result))
+        else None
+    )
+
+
+def weather_mood(result: dict[str, Any]) -> str:
+    """Выбирает эмоцию по кодам WMO с учётом числа дней."""
+    moods = [classify_weather_code(code) for code in weather_codes(result)]
+    if not moods:
+        return 'welcome'
+
+    threshold = ceil(len(moods) / 2)
+    for mood in ('thunderstorm', 'snow', 'rain', 'sunny'):
+        if moods.count(mood) >= threshold:
+            return mood
+    return 'welcome'
 
 
 def log_http_error(message: str, error: httpx.HTTPError) -> None:
@@ -110,6 +202,7 @@ async def reply(
     update: Update,
     text: str,
     reply_markup: InlineKeyboardMarkup | None = None,
+    parse_mode: str | None = None,
 ) -> Message | None:
     """Отправляет ответ, если исходное сообщение доступно."""
     message = get_message(update)
@@ -121,6 +214,7 @@ async def reply(
     return await message.reply_text(
         text,
         reply_markup=reply_markup,
+        parse_mode=parse_mode,
     )
 
 
@@ -156,6 +250,43 @@ def language_keyboard() -> InlineKeyboardMarkup:
             ],
         ]
     )
+
+
+def navigation_keyboard(language: str) -> InlineKeyboardMarkup:
+    """Создаёт локализованные кнопки помощи и выбора языка."""
+    labels = (
+        ('❔ Помощь', '🌍 Язык') if language == 'ru' else ('❔ Help', '🌍 Language')
+    )
+    return InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton(labels[0], callback_data='nav:help'),
+                InlineKeyboardButton(labels[1], callback_data='nav:language'),
+            ]
+        ]
+    )
+
+
+async def navigation_callback(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+) -> None:
+    """Обрабатывает кнопки помощи и выбора языка."""
+    callback = get_callback(update)
+    if callback is None:
+        return
+
+    await callback.answer()
+    language = preferred_language(update, context)
+
+    if callback.data == 'nav:help':
+        await reply(update, MESSAGES[language]['help'])
+    elif callback.data == 'nav:language':
+        await reply(
+            update,
+            MESSAGES[language]['lang'],
+            reply_markup=language_keyboard(),
+        )
 
 
 def city_keyboard(
@@ -324,6 +455,7 @@ def split_weather_message(response: str) -> list[str]:
 async def send_weather_message(
     update: Update,
     response: str,
+    mood: str | None = None,
 ) -> None:
     """Отправляет погодный ответ без повреждения HTML-разметки."""
     message = get_message(update)
@@ -331,6 +463,10 @@ async def send_weather_message(
     if message is None:
         LOGGER.warning('Погодный ответ не отправлен: нет сообщения')
         return
+
+    # У стикеров нет подписи: текст прогноза всегда идёт отдельно.
+    if mood is not None:
+        await send_stormy_sticker(update, mood)
 
     for part in split_weather_message(response):
         await message.reply_text(
@@ -354,6 +490,7 @@ async def start(
         update,
         MESSAGES['ru']['welcome'],
         reply_markup=language_keyboard(),
+        parse_mode='HTML',
     )
 
 
@@ -397,9 +534,13 @@ async def language_callback(
         MESSAGES[language]['language_set'],
     )
 
+    await send_stormy_sticker(update, 'welcome')
+
     await reply(
         update,
         MESSAGES[language]['introduction'],
+        reply_markup=navigation_keyboard(language),
+        parse_mode='HTML',
     )
 
 
@@ -478,7 +619,8 @@ async def respond_weather(
             language,
         )
 
-        await send_weather_message(update, response)
+        mood = query_mood(query, result)
+        await send_weather_message(update, response, mood=mood)
 
         clear_pending_year(context)
         clear_pending_city(context)
@@ -688,6 +830,7 @@ async def handle_text(
         language = query.language
 
     if not query.city:
+        await send_stormy_sticker(update, 'thinking')
         await reply(
             update,
             MESSAGES[language]['parse_city'],
@@ -948,6 +1091,13 @@ def main() -> None:
         CallbackQueryHandler(
             language_callback,
             pattern=r'^lang:(ru|en)$',
+        ),
+    )
+
+    application.add_handler(
+        CallbackQueryHandler(
+            navigation_callback,
+            pattern=r'^nav:(help|language)$',
         ),
     )
 

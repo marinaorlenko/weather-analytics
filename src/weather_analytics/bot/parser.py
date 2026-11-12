@@ -12,7 +12,10 @@ import re
 from dataclasses import dataclass
 from datetime import date, timedelta
 
-from weather_analytics.bot.constants import LEAP_REFERENCE_YEAR
+from weather_analytics.bot.constants import (
+    LEAP_REFERENCE_YEAR,
+    WEEK_FORECAST_DAYS,
+)
 from weather_analytics.bot.parser_patterns import (
     CITY_END,
     CITY_NAME,
@@ -20,16 +23,20 @@ from weather_analytics.bot.parser_patterns import (
     CITY_TIME_WORDS,
     CITY_WEATHER_WORDS,
     CURRENT_PERIOD,
+    EN_DAY_MONTH_DATE,
     EN_MONTHS,
     EN_WORD_DATE,
+    FORECAST_DAYS,
     FUTURE_INTENT,
     ISO_DATE,
     METRICS,
+    NEAREST_DAYS,
     NUMERIC_DATE,
     PAST_INTENT,
     RELATIVE_DATES,
     RU_MONTHS,
     RU_WORD_DATE,
+    TIME_TYPO_REPLACEMENTS,
     WEEK_PERIOD,
     WEEKDAYS,
     WEEKEND_PERIOD,
@@ -47,11 +54,12 @@ class WeatherQuery:
         target_date: Полная календарная дата, если год известен.
         relative_days: Смещение относительно локальной даты города.
         weekday: Номер запрошенного дня недели.
-        period: Тип периода: now, day, week или weekend.
+        period: Тип периода: now, day, week, weekend или days.
         explicit_date: Признак явного указания даты или дня недели.
         day: День месяца для даты без года.
         month: Месяц для даты без года.
-        time_intent: Направленность: past, future или unspecified.
+        time_intent: Направленность запроса.
+        forecast_days: Количество дней многодневного прогноза.
     """
 
     city: str | None
@@ -65,6 +73,26 @@ class WeatherQuery:
     day: int | None = None
     month: int | None = None
     time_intent: str = 'unspecified'
+    forecast_days: int | None = None
+
+
+def normalize_query(text: str) -> str:
+    """Нормализует запрос и исправляет известные опечатки.
+
+    Исправляет только явно заданные варианты временных
+    выражений и месяцев, не изменяя названия городов.
+    """
+    normalized = text.strip().casefold().replace('ё', 'е')
+
+    for pattern, replacement in TIME_TYPO_REPLACEMENTS:
+        normalized = re.sub(
+            pattern,
+            replacement,
+            normalized,
+            flags=re.IGNORECASE,
+        )
+
+    return re.sub(r'\s+', ' ', normalized).strip()
 
 
 def extract_calendar_date(
@@ -73,30 +101,33 @@ def extract_calendar_date(
     """Извлекает календарную дату без подстановки текущего года.
 
     Args:
-        lowered: Нормализованный текст пользовательского запроса.
+        lowered: Нормализованный текст запроса.
 
     Returns:
         Полную дату либо отдельные день и месяц.
 
     Raises:
-        ValueError: Если дата с указанным годом некорректна
-            или день и месяц не образуют допустимую дату.
+        ValueError: Если календарная дата некорректна.
     """
     iso = ISO_DATE.search(lowered)
     numeric = NUMERIC_DATE.search(lowered)
     words_ru = RU_WORD_DATE.search(lowered)
     words_en = EN_WORD_DATE.search(lowered)
+    day_month_en = EN_DAY_MONTH_DATE.search(lowered)
 
-    if not any((iso, numeric, words_ru, words_en)):
+    if not any((iso, numeric, words_ru, words_en, day_month_en)):
         return None, None, None
-
-    year: int | None
 
     try:
         if iso:
             year_str, month_str, day_str = iso.groups()
+
             return (
-                date(int(year_str), int(month_str), int(day_str)),
+                date(
+                    int(year_str),
+                    int(month_str),
+                    int(day_str),
+                ),
                 None,
                 None,
             )
@@ -105,28 +136,32 @@ def extract_calendar_date(
             day_str, month_str, year_str = numeric.groups()
             day = int(day_str)
             month = int(month_str)
-            year = int(year_str) if year_str else None
 
         elif words_ru:
             day_str, month_name, year_str = words_ru.groups()
             day = int(day_str)
             month = RU_MONTHS[month_name]
-            year = int(year_str) if year_str else None
 
         elif words_en:
             month_name, day_str, year_str = words_en.groups()
             day = int(day_str)
             month = EN_MONTHS[month_name]
-            year = int(year_str) if year_str else None
+
+        elif day_month_en:
+            day_str, month_name, year_str = day_month_en.groups()
+            day = int(day_str)
+            month = EN_MONTHS[month_name]
 
         else:
             return None, None, None
 
+        year = int(year_str) if year_str else None
+
         if year is not None:
             return date(year, month, day), None, None
 
-        # Проверяем корректность дня и месяца, включая 29 февраля,
-        # не выбирая конкретный год пользовательского запроса.
+        # Проверяем день и месяц без выбора года запроса.
+        # Опорный год високосный, поэтому 29 февраля допустимо.
         date(LEAP_REFERENCE_YEAR, month, day)
 
         return None, day, month
@@ -136,19 +171,10 @@ def extract_calendar_date(
 
 
 def detect_time_intent(lowered: str) -> str:
-    """Определяет направленность запроса по явным выражениям.
-
-    Args:
-        lowered: Нормализованный текст запроса.
-
-    Returns:
-        past, future или unspecified.
-    """
+    """Определяет прошлую или будущую направленность запроса."""
     past = bool(PAST_INTENT.search(lowered))
     future = bool(FUTURE_INTENT.search(lowered))
 
-    # При противоречивых признаках не пытаемся угадать
-    # намерение пользователя.
     if past == future:
         return 'unspecified'
 
@@ -156,14 +182,7 @@ def detect_time_intent(lowered: str) -> str:
 
 
 def remove_date_expressions(lowered: str) -> str:
-    """Удаляет календарные даты перед извлечением города.
-
-    Args:
-        lowered: Нормализованный текст запроса.
-
-    Returns:
-        Текст без календарных дат.
-    """
+    """Удаляет календарные даты перед извлечением города."""
     cleaned = lowered
 
     for pattern in (
@@ -171,76 +190,148 @@ def remove_date_expressions(lowered: str) -> str:
         NUMERIC_DATE,
         RU_WORD_DATE,
         EN_WORD_DATE,
+        EN_DAY_MONTH_DATE,
     ):
         cleaned = pattern.sub(' ', cleaned)
 
     return re.sub(r'\s+', ' ', cleaned).strip()
 
 
-def extract_city(lowered: str) -> str | None:
-    """Извлекает предполагаемое название населённого пункта.
+def remove_time_expressions(lowered: str) -> str:
+    """Удаляет временные выражения из кандидата в город.
 
-    Поддерживает запросы с географическими предлогами,
-    составные названия и короткие запросы без предлогов.
-
-    Args:
-        lowered: Нормализованный текст запроса.
-
-    Returns:
-        Предполагаемое название или None.
+    Удаление выполняется до поиска географических предлогов,
+    чтобы конструкции «в ближайшие дни» не воспринимались
+    как указание населённого пункта.
     """
     cleaned = remove_date_expressions(lowered)
-
-    # Вначале рассматриваем фрагменты после предлогов.
-    # Временные предлоги и выражения отбрасываются.
-    for match in CITY_PREPOSITION.finditer(cleaned):
-        candidate = cleaned[match.end() :]
-        candidate = CITY_END.split(candidate, maxsplit=1)[0]
-        candidate = CITY_WEATHER_WORDS.sub(' ', candidate)
-        candidate = re.sub(r'\s+', ' ', candidate).strip(' ,')
-
-        if (
-            candidate
-            and CITY_NAME.fullmatch(candidate)
-            and not CITY_TIME_WORDS.fullmatch(candidate)
-        ):
-            return candidate.title()
-
-    # Для коротких запросов без предлогов удаляем
-    # погодные и временные выражения.
-    candidate = CITY_WEATHER_WORDS.sub(' ', cleaned)
 
     for pattern in (
         CURRENT_PERIOD,
         WEEK_PERIOD,
         WEEKEND_PERIOD,
+        NEAREST_DAYS,
+        FORECAST_DAYS,
         FUTURE_INTENT,
         PAST_INTENT,
     ):
-        candidate = pattern.sub(' ', candidate)
+        cleaned = pattern.sub(' ', cleaned)
 
     for expression, _ in RELATIVE_DATES:
-        candidate = re.sub(expression, ' ', candidate)
+        cleaned = re.sub(
+            rf'(?<!\w)(?:{expression})(?!\w)',
+            ' ',
+            cleaned,
+            flags=re.IGNORECASE,
+        )
+
+    for word in WEEKDAYS:
+        cleaned = re.sub(
+            rf'(?<!\w){re.escape(word)}(?!\w)',
+            ' ',
+            cleaned,
+            flags=re.IGNORECASE,
+        )
+
+    return re.sub(r'\s+', ' ', cleaned).strip()
+
+
+def clean_city_candidate(candidate: str) -> str | None:
+    """Очищает и проверяет предполагаемое название города."""
+    candidate = CITY_WEATHER_WORDS.sub(' ', candidate)
+
+    # Убираем служебные слова только на краях фрагмента.
+    # Внутренние части составных названий не изменяем.
+    candidate = re.sub(
+        r'^(?:(?:в|во|у|из|на|за|по|для|'
+        r'in|for|at|on)\s+)+',
+        '',
+        candidate,
+        flags=re.IGNORECASE,
+    )
+
+    candidate = re.sub(
+        r'(?:\s+(?:в|во|у|из|на|за|по|для|'
+        r'in|for|at|on))+$',
+        '',
+        candidate,
+        flags=re.IGNORECASE,
+    )
 
     candidate = re.sub(r'\s+', ' ', candidate).strip(' ,')
 
-    if (
-        candidate
-        and CITY_NAME.fullmatch(candidate)
-        and not CITY_TIME_WORDS.fullmatch(candidate)
-        and not any(
-            re.search(pattern, candidate)
-            for patterns in METRICS.values()
-            for pattern in patterns
-        )
+    if not candidate:
+        return None
+
+    if not CITY_NAME.fullmatch(candidate):
+        return None
+
+    if CITY_TIME_WORDS.fullmatch(candidate):
+        return None
+
+    if any(
+        re.search(pattern, candidate, flags=re.IGNORECASE)
+        for patterns in METRICS.values()
+        for pattern in patterns
     ):
-        return candidate.title()
+        return None
+
+    return candidate.title()
+
+
+def extract_city(lowered: str) -> str | None:
+    """Извлекает предполагаемое название населённого пункта.
+
+    Сначала удаляет даты и временные выражения, затем
+    рассматривает фрагменты после географических предлогов.
+
+    Если подходящего фрагмента нет, проверяет оставшийся
+    текст целиком. Существование города здесь не проверяется.
+    """
+    cleaned = remove_time_expressions(lowered)
+
+    # Убираем погодные слова до поиска предлогов.
+    # Это позволяет обработать запросы с городом
+    # как в начале, так и в конце сообщения.
+    cleaned = CITY_WEATHER_WORDS.sub(' ', cleaned)
+    cleaned = re.sub(r'\s+', ' ', cleaned).strip()
+
+    for match in CITY_PREPOSITION.finditer(cleaned):
+        candidate = cleaned[match.end() :]
+        candidate = CITY_END.split(candidate, maxsplit=1)[0]
+
+        city = clean_city_candidate(candidate)
+
+        if city is not None:
+            return city
+
+    # Запросы без предлога:
+    # «Хошимин гроза», «London thunderstorm».
+    return clean_city_candidate(cleaned)
+
+
+def extract_forecast_days(lowered: str) -> int | None:
+    """Определяет количество дней многодневного прогноза.
+
+    Возвращает запрошенное число без ограничения семью днями.
+    Проверка допустимого диапазона выполняется сервисом.
+    """
+    match = FORECAST_DAYS.search(lowered)
+
+    if match:
+        return int(match.group(1))
+
+    if WEEK_PERIOD.search(lowered):
+        return WEEK_FORECAST_DAYS
+
+    if NEAREST_DAYS.search(lowered):
+        return 3
 
     return None
 
 
 def parse_query(text: str) -> WeatherQuery:
-    """Разбирает пользовательский запрос на погоду.
+    """Разбирает пользовательский погодный запрос.
 
     Args:
         text: Сообщение пользователя.
@@ -251,7 +342,7 @@ def parse_query(text: str) -> WeatherQuery:
     Raises:
         ValueError: С кодом invalid_date для некорректной даты.
     """
-    lowered = text.strip().casefold().replace('ё', 'е')
+    lowered = normalize_query(text)
     language = 'ru' if re.search(r'[а-я]', lowered) else 'en'
 
     metrics = tuple(
@@ -265,41 +356,56 @@ def parse_query(text: str) -> WeatherQuery:
     period = 'day'
     relative_days = None
     weekday = None
+    forecast_days = None
 
     if CURRENT_PERIOD.search(lowered):
         period = 'now'
+
     else:
         for expression, offset in RELATIVE_DATES:
-            if re.search(expression, lowered):
+            if re.search(
+                rf'(?<!\w)(?:{expression})(?!\w)',
+                lowered,
+                flags=re.IGNORECASE,
+            ):
                 relative_days = offset
                 break
 
-    if WEEK_PERIOD.search(lowered):
-        period = 'week'
-    elif WEEKEND_PERIOD.search(lowered):
-        period = 'weekend'
-
+    # Определяем календарную дату до многодневного периода.
+    # Явная дата имеет приоритет над остальными периодами.
     target_date, day, month = extract_calendar_date(lowered)
 
     explicit_date = target_date is not None or day is not None
 
-    # Явная календарная дата имеет приоритет над периодами.
     if explicit_date:
         period = 'day'
 
-    elif relative_days is None and period not in (
-        'week',
-        'weekend',
-        'now',
-    ):
-        for word, day_number in WEEKDAYS.items():
-            if re.search(
-                r'(?<!\w)' + re.escape(word) + r'(?!\w)',
-                lowered,
-            ):
-                weekday = day_number
-                explicit_date = True
-                break
+    elif period != 'now':
+        if WEEKEND_PERIOD.search(lowered):
+            period = 'weekend'
+
+        else:
+            forecast_days = extract_forecast_days(lowered)
+
+            if WEEK_PERIOD.search(lowered):
+                period = 'week'
+            elif forecast_days is not None:
+                period = 'days'
+
+            elif relative_days is None:
+                for word, day_number in WEEKDAYS.items():
+                    if re.search(
+                        rf'(?<!\w){re.escape(word)}(?!\w)',
+                        lowered,
+                    ):
+                        weekday = day_number
+                        explicit_date = True
+                        break
+
+    # Для запросов на конкретный день многодневный
+    # период не применяется.
+    if explicit_date or period in ('now', 'weekend'):
+        forecast_days = None
 
     return WeatherQuery(
         city=extract_city(lowered),
@@ -313,6 +419,7 @@ def parse_query(text: str) -> WeatherQuery:
         day=day,
         month=month,
         time_intent=time_intent,
+        forecast_days=forecast_days,
     )
 
 
@@ -347,11 +454,16 @@ def resolve_date(
 
         # Перебираем годы начиная с текущего, чтобы найти
         # ближайшую будущую дату, включая 29 февраля.
-        # Девятилетний интервал учитывает исключения
-        # из четырёхлетнего високосного цикла.
-        for year in range(local_today.year, local_today.year + 9):
+        for year in range(
+            local_today.year,
+            local_today.year + 9,
+        ):
             try:
-                target = date(year, query.month, query.day)
+                target = date(
+                    year,
+                    query.month,
+                    query.day,
+                )
             except ValueError:
                 continue
 
@@ -361,10 +473,13 @@ def resolve_date(
         raise ValueError('invalid_date')
 
     if query.relative_days is not None:
-        return local_today + timedelta(days=query.relative_days)
+        return local_today + timedelta(
+            days=query.relative_days,
+        )
 
     if query.weekday is not None:
-        delta = (query.weekday - local_today.weekday()) % 7
+        delta = (query.weekday - local_today.weekday()) % WEEK_FORECAST_DAYS
+
         return local_today + timedelta(days=delta)
 
     return local_today

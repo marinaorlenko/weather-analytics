@@ -10,12 +10,12 @@
 MESSAGES = {
     'ru': {
         'welcome': (
-            '🌪️ STORMY\n\n'
-            'Привет! Я Сторми — твой погодный помощник.\n'
+            '🌪️ <b>STORMY</b>\n\n'
+            '<b>Привет! Я Сторми — твой погодный помощник.</b>\n'
             'Расскажу о погоде в городах по всему миру.\n\n'
-            'Hi! I’m Stormy, your personal weather assistant.\n'
+            '<b>Hi! I’m Stormy, your personal weather assistant.</b>\n'
             'Ask me about the weather anywhere in the world.\n\n'
-            '🌍 Выбери язык / Choose your language:'
+            '🌍 <b>Выбери язык / Choose your language:</b>'
         ),
         'help': (
             '🌪️ STORMY — ПОМОЩЬ\n\n'
@@ -45,7 +45,11 @@ MESSAGES = {
         ),
         'ambiguous': ('Нашлось несколько мест. Выбери нужное:'),
         'error': ('Сейчас не удалось получить погодные данные. Попробуй позже.'),
-        'future_range': ('Прогноз доступен максимум на 16 дней вперёд.'),
+        'future_range': ('Прогноз доступен максимум на 7 дней вперёд.'),
+        'forecast_days_limit': (
+            'Прогноз доступен максимум на 7 дней, включая сегодняшний. '
+            'Укажи период от 1 до 7 дней.'
+        ),
         'past_range': ('Для настолько ранней даты данные недоступны.'),
         'mixed_range': ('Период пересекает прошлые и будущие дни; уточни дату.'),
         'invalid_date': ('Не удалось распознать дату. Например: 2026-11-03.'),
@@ -64,35 +68,37 @@ MESSAGES = {
         'year_invalid_date': ('Такой даты не существует. Выбери другой год.'),
         'year_selected': '📅 Выбран год: {year}',
         'year_expired': ('Этот запрос уже неактуален. Отправь новый вопрос о погоде.'),
+        # HTML-разметка используется только для приветственных сообщений.
         'introduction': (
-            '🌪️ Знакомься, я Stormy!\n\n'
+            '🌪️ <b>STORMY | Твой погодный помощник</b>\n\n'
             'Я помогу узнать погоду в городах по всему миру. '
             'Просто напиши вопрос обычными словами.\n\n'
-            '🔎 ЧТО Я УМЕЮ\n\n'
+            '🔎 <b>ЧТО Я УМЕЮ</b>\n\n'
             '🌡️ Температура и ощущаемая температура\n'
             '🌬️ Ветер и порывы\n'
             '🌧️ Дождь, снег, грозы и вероятность осадков\n'
             '💧 Влажность и давление\n'
             '☁️ Облачность и УФ-индекс\n'
-            '📅 Прогноз до 16 дней\n'
+            '📅 Прогноз до 7 дней\n'
             '🕰️ Погода за прошедшие даты\n\n'
-            '💬 ПОПРОБУЙ СПРОСИТЬ\n\n'
+            '💬 <b>ПОПРОБУЙ СПРОСИТЬ</b>\n\n'
             '• Какая погода завтра в Москве?\n'
             '• Ветер и температура в Дубае в пятницу\n'
             '• Прогноз на неделю в Лондоне\n'
             '• Погода в Париже 2025-10-01\n\n'
-            '🌍 Чтобы сменить язык, отправь /language.\n\n'
-            'Данные: Open-Meteo.'
+            '📌 Для конкретной даты используй формат '
+            '<b>ГГГГ-ММ-ДД</b>, например <code>2025-10-01</code>.\n\n'
+            '<i>Данные: Open-Meteo.</i>'
         ),
     },
     'en': {
         'welcome': (
-            '🌪️ STORMY\n\n'
-            'Привет! Я Сторми — твой погодный помощник.\n'
+            '🌪️ <b>STORMY</b>\n\n'
+            '<b>Привет! Я Сторми — твой погодный помощник.</b>\n'
             'Расскажу о погоде в городах по всему миру.\n\n'
-            'Hi! I’m Stormy, your personal weather assistant.\n'
+            '<b>Hi! I’m Stormy, your personal weather assistant.</b>\n'
             'Ask me about the weather anywhere in the world.\n\n'
-            '🌍 Выбери язык / Choose your language:'
+            '🌍 <b>Выбери язык / Choose your language:</b>'
         ),
         'help': (
             '🌪️ STORMY — HELP\n\n'
@@ -121,7 +127,11 @@ MESSAGES = {
         ),
         'ambiguous': ('I found several places. Choose one:'),
         'error': ('Weather data is temporarily unavailable. Please try again later.'),
-        'future_range': ('Forecasts are available up to 16 days ahead.'),
+        'future_range': ('Forecasts are available up to 7 days ahead.'),
+        'forecast_days_limit': (
+            'Forecasts are available for up to 7 days, including today. '
+            'Please request a period from 1 to 7 days.'
+        ),
         'past_range': ('Historical data is unavailable for such an early date.'),
         'mixed_range': (
             'This period spans past and future days. Please specify a date.'
@@ -144,25 +154,28 @@ MESSAGES = {
         'year_expired': (
             'This request is no longer active. Please send a new weather question.'
         ),
+        # HTML-разметка используется только для приветственных сообщений.
         'introduction': (
-            '🌪️ Meet Stormy!\n\n'
+            '🌪️ <b>STORMY | Your Weather Assistant</b>\n\n'
             'I’m your personal weather assistant. '
             'Ask me about the weather in cities around the world.\n\n'
-            '🔎 WHAT I CAN DO\n\n'
+            '🔎 <b>WHAT I CAN DO</b>\n\n'
             '🌡️ Temperature and feels-like temperature\n'
             '🌬️ Wind speed and gusts\n'
             '🌧️ Rain, snow, thunderstorms and precipitation probability\n'
             '💧 Humidity and atmospheric pressure\n'
             '☁️ Cloud cover and UV index\n'
-            '📅 Forecasts up to 16 days ahead\n'
+            '📅 Forecasts up to 7 days ahead\n'
             '🕰️ Historical weather data\n\n'
-            '💬 TRY ASKING\n\n'
+            '💬 <b>TRY ASKING</b>\n\n'
             '• What’s the weather in Dubai tomorrow?\n'
             '• Wind and temperature in London on Friday\n'
             '• 7-day forecast for Paris\n'
             '• Weather in Rome on October 1, 2025\n\n'
-            '🌍 To change your language, send /language.\n\n'
-            'Powered by Open-Meteo.'
+            '📌 For a specific date, use the '
+            '<b>YYYY-MM-DD</b> format, for example '
+            '<code>2025-10-01</code>.\n\n'
+            '<i>Powered by Open-Meteo.</i>'
         ),
     },
 }
