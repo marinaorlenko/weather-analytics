@@ -12,17 +12,21 @@ WORKDIR /app
 # Исходный код размещён в src и описан в pyproject.toml.
 COPY pyproject.toml README.md ./
 COPY src/ ./src/
-
 RUN python -m pip install --no-cache-dir .
 
 # Файлы, необходимые для ETL, Alembic и интерфейса.
 COPY alembic.ini ./
 COPY alembic/ ./alembic/
 COPY sql/ ./sql/
+
 # Справочники городов для текущих и будущих загрузок ETL.
 COPY data/capitals.csv ./data/capitals.csv
 COPY data/stormy_cities.csv ./data/stormy_cities.csv
 COPY data/translations/ ./data/translations/
+
+# Статические ресурсы интерфейса.
+COPY assets/ ./assets/
+
 COPY main.py dashboard.py ./
 
 # Запускаем приложение от непривилегированного пользователя.
