@@ -409,19 +409,13 @@ if last_loaded_date is not None:
 expected_days = (end_date - start_date).days + 1
 
 expected_dates = {
-    start_date + timedelta(days=offset)
-    for offset in range(expected_days)
+    start_date + timedelta(days=offset) for offset in range(expected_days)
 }
 
-actual_dates = [
-    record.get('weather_date')
-    for record in daily_records
-]
+actual_dates = [record.get('weather_date') for record in daily_records]
 
 if len(actual_dates) != expected_days or set(actual_dates) != expected_dates:
-    raise ValueError(
-        'Неполные или некорректные суточные данные'
-    )
+    raise ValueError('Неполные или некорректные суточные данные')
 ```
 
 Для почасовой истории текущая реализация ожидает 24 записи на календарный день.
@@ -505,18 +499,9 @@ return sql.SQL(
     'DO UPDATE SET {updates}'
 ).format(
     table=sql.Identifier(table),
-    columns=sql.SQL(', ').join(
-        sql.Identifier(column)
-        for column in insert_columns
-    ),
-    values=sql.SQL(', ').join(
-        sql.Placeholder(column)
-        for column in insert_columns
-    ),
-    conflict=sql.SQL(', ').join(
-        sql.Identifier(column)
-        for column in conflict_columns
-    ),
+    columns=sql.SQL(', ').join(sql.Identifier(column) for column in insert_columns),
+    values=sql.SQL(', ').join(sql.Placeholder(column) for column in insert_columns),
+    conflict=sql.SQL(', ').join(sql.Identifier(column) for column in conflict_columns),
     updates=sql.SQL(', ').join(
         sql.SQL('{} = EXCLUDED.{}').format(
             sql.Identifier(column),
@@ -606,9 +591,7 @@ with psycopg.connect(**self.connection_params) as connection:
 ```python
 start_local = pd.Timestamp(start_date).tz_localize(timezone)
 
-end_local = (
-    pd.Timestamp(end_date) + pd.Timedelta(days=1)
-).tz_localize(timezone)
+end_local = (pd.Timestamp(end_date) + pd.Timedelta(days=1)).tz_localize(timezone)
 
 return (
     start_local.tz_convert('UTC'),
@@ -703,8 +686,7 @@ ORDER BY forecast_date
 
 ```python
 @st.cache_data(ttl=300)
-def load_cities() -> pd.DataFrame:
-    ...
+def load_cities() -> pd.DataFrame: ...
 ```
 
 Аналогичный механизм применяется к загрузке погодных данных.
@@ -982,11 +964,7 @@ Docker Compose определяет сервис и команду по умол
 Фрагмент создания:
 
 ```python
-cursor.execute(
-    sql.SQL('CREATE DATABASE {}').format(
-        sql.Identifier(TEST_DATABASE)
-    )
-)
+cursor.execute(sql.SQL('CREATE DATABASE {}').format(sql.Identifier(TEST_DATABASE)))
 ```
 
 Структура таблиц формируется через:
