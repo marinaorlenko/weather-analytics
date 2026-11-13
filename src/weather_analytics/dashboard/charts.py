@@ -7,6 +7,7 @@ import streamlit as st
 from weather_analytics.dashboard.constants import (
     EXTRA_COLORS,
     EXTRA_UNITS,
+    METRIC_COLORS,
     SAGE_GREEN,
     STEEL_BLUE,
 )
@@ -37,7 +38,7 @@ def get_date_ticks(
     dataframe: pd.DataFrame,
     date_column: str,
 ) -> list:
-    """Возвращает адаптивные отметки оси X для выбранного периода."""
+    """Возвращает отметки оси X без близко расположенных подписей."""
     if dataframe.empty or date_column not in dataframe:
         return []
 
@@ -49,33 +50,33 @@ def get_date_ticks(
     if dates.empty:
         return []
 
-    # Используем календарные дни, чтобы почасовые наблюдения
-    # не создавали отдельную отметку для каждого часа.
     first = dates.min().normalize()
     last = dates.max().normalize()
     days = (last - first).days + 1
 
     if days <= 14:
-        frequency = 'D'
-    elif days <= 90:
-        frequency = '7D'
-    elif days <= 365:
+        return pd.date_range(first, last, freq='D').tolist()
+
+    if days <= 90:
+        # Для недельных отметок используем шаг от первой даты.
+        ticks = pd.date_range(first, last, freq='7D').tolist()
+
+        # Не добавляем последнюю дату рядом с предыдущей отметкой.
+        if (last - ticks[-1]).days >= 4:
+            ticks.append(last)
+
+        return ticks
+
+    if days <= 365:
         frequency = 'MS'
     elif days <= 730:
         frequency = '3MS'
     else:
         frequency = 'YS'
 
-    ticks = pd.date_range(first, last, freq=frequency).tolist()
-
-    # Для периодов до двух лет добавляем первую дату,
-    # если она не совпадает с календарной отметкой.
-    # Для многолетних периодов оставляем только начала годов,
-    # чтобы не создавать повторяющиеся подписи.
-    if days <= 730 and (not ticks or ticks[0] != first):
-        ticks.insert(0, first)
-
-    return ticks
+    # Для длинных периодов используем календарные границы.
+    # Это предотвращает наложение подписей соседних месяцев.
+    return pd.date_range(first, last, freq=frequency).tolist()
 
 
 def get_date_format(
@@ -197,6 +198,13 @@ def show_daily_chart(
     ticks = get_date_ticks(dataframe, date_column)
     date_format = get_date_format(dataframe, date_column)
 
+    # Используем постоянные цвета показателей.
+    # Для неизвестных показателей сохраняем переданные цвета.
+    chart_colors = [
+        METRIC_COLORS.get(column, color)
+        for column, color in zip(columns, colors, strict=True)
+    ]
+
     # Сохраняем ранее согласованный масштаб оси Y от нуля.
     y_scale = alt.Scale(zero=True)
 
@@ -235,7 +243,7 @@ def show_daily_chart(
             'indicator:N',
             scale=alt.Scale(
                 domain=labels,
-                range=colors,
+                range=chart_colors,
             ),
             legend=(alt.Legend(title=None) if len(labels) > 1 else None),
         ),
@@ -264,7 +272,7 @@ def show_hourly_chart(
     unit: str,
     language: str,
 ) -> None:
-    """Строит почасовой график с адаптивной осью дат."""
+    """Строит почасовой график без интерактивного масштабирования."""
     st.subheader(title)
 
     if dataframe.empty or column not in dataframe:
@@ -284,11 +292,12 @@ def show_hourly_chart(
 
     ticks = get_date_ticks(plot_data, 'local_time')
     date_format = get_date_format(plot_data, 'local_time')
+    chart_color = METRIC_COLORS.get(column, color)
 
     chart = (
         alt.Chart(plot_data)
         .mark_line(
-            color=color,
+            color=chart_color,
             strokeWidth=2.2,
         )
         .encode(
@@ -316,7 +325,6 @@ def show_hourly_chart(
             ],
         )
         .properties(height=320)
-        .interactive()
     )
 
     st.altair_chart(chart, width='stretch')
@@ -430,7 +438,7 @@ def show_extra_charts(
     timezone: str,
     daily: bool = False,
 ) -> None:
-    """Строит дополнительные графики с адаптивной осью дат."""
+    """Строит дополнительные графики без интерактивного масштабирования."""
     if dataframe.empty:
         st.info(translate('no_extra', language))
         return
@@ -485,12 +493,17 @@ def show_extra_charts(
             '%d.%m.%Y' if daily else '%d.%m.%Y %H:%M'
         )
 
+        chart_color = METRIC_COLORS.get(
+            column,
+            EXTRA_COLORS[index % len(EXTRA_COLORS)],
+        )
+
         chart = (
             alt.Chart(values)
             .mark_line(
                 point=daily,
                 strokeWidth=2.2,
-                color=EXTRA_COLORS[index % len(EXTRA_COLORS)],
+                color=chart_color,
             )
             .encode(
                 x=date_axis(
@@ -521,7 +534,6 @@ def show_extra_charts(
                 ],
             )
             .properties(height=260)
-            .interactive()
         )
 
         st.altair_chart(chart, width='stretch')

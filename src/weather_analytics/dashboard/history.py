@@ -11,9 +11,9 @@ from weather_analytics.dashboard.charts import (
     show_hourly_chart,
 )
 from weather_analytics.dashboard.constants import (
-    DEEP_BLUE,
     HISTORY_DAILY_EXTRA,
     HISTORY_HOURLY_EXTRA,
+    LIGHT_CORAL,
     SAGE_GREEN,
     STEEL_BLUE,
 )
@@ -105,19 +105,14 @@ def select_hourly_period(
 
     key = f'history_hourly_dates_{city_id}'
 
-    # При изменении основного периода сбрасываем календарь,
-    # если сохранённые даты больше не входят в доступный интервал.
+    # Сбрасываем сохранённый диапазон только при смене доступных границ.
+    # Неполный выбор и период длиннее 14 дней не сбрасываем:
+    # пользователь должен иметь возможность завершить или исправить ввод.
     if key in st.session_state:
         current = st.session_state[key]
-
-        valid = (
-            isinstance(current, (tuple, list))
-            and len(current) == 2
-            and start_date <= current[0] <= current[1] <= end_date
-            and (current[1] - current[0]).days < 14
-        )
-
-        if not valid:
+        if not isinstance(current, (tuple, list)):
+            del st.session_state[key]
+        elif any(day < start_date or day > end_date for day in current):
             del st.session_state[key]
 
     selected = st.date_input(
@@ -148,8 +143,10 @@ def select_hourly_period(
     if (hourly_end - hourly_start).days >= 14:
         st.warning(
             ui(
-                'Максимальный интервал — 14 календарных дней.',
-                'Maximum interval is 14 calendar days.',
+                'Выбран период более 14 дней. Укажите интервал не более '
+                '14 календарных дней. Графики обновятся после исправления дат.',
+                'The selected period exceeds 14 days. Choose a range of up to '
+                '14 calendar days. Charts will update after the dates are corrected.',
                 language,
             )
         )
@@ -191,11 +188,10 @@ def show_apparent_temperature(
     if dataframe.empty:
         return
 
-    # Показываем показатели для последнего дня выбранного периода.
-    latest = dataframe.sort_values('weather_date').iloc[-1]
-
-    apparent = float(latest['apparent_temperature_mean'])
-    actual = latest['average_temperature']
+    # Рассчитываем средние значения по дням с доступной ощущаемой
+    # температурой, чтобы сравнение использовало один и тот же набор дат.
+    apparent = float(dataframe['apparent_temperature_mean'].mean())
+    actual = dataframe['average_temperature'].mean()
 
     category, color = heat_risk(apparent, language)
 
@@ -228,10 +224,14 @@ def show_apparent_temperature(
 
     st.caption(
         ui(
-            'Показатели приведены для последнего дня выбранного периода. '
-            'Категория жары ориентировочная и не является медицинской оценкой риска.',
-            'Values refer to the last day in the selected period. '
-            'Heat category is indicative, not a medical risk assessment.',
+            'Показаны средние значения за дни выбранного периода, для которых '
+            'доступна ощущаемая температура. Категория тепловой нагрузки '
+            'по среднему значению ориентировочная и не является медицинской '
+            'оценкой риска.',
+            'Averages cover days in the selected period with available '
+            'feels-like '
+            'temperature data. Heat stress based on the period average is '
+            'indicative and is not a medical risk assessment.',
             language,
         )
     )
@@ -367,14 +367,6 @@ def render_history_tab(
     # Выбор основного периода
     # -----------------------------------------------------
 
-    st.subheader(
-        ui(
-            'Период наблюдений',
-            'Observation period',
-            language,
-        )
-    )
-
     period_options = {
         'all': ui('Весь период', 'All available data', language),
         'last_7': ui('Последние 7 дней', 'Last 7 days', language),
@@ -387,7 +379,7 @@ def render_history_tab(
     if 'history_period_value' not in st.session_state:
         st.session_state.history_period_value = 'all'
 
-    period = st.selectbox(
+    period = st.sidebar.selectbox(
         ui('Период', 'Period', language),
         options=list(period_options),
         index=list(period_options).index(st.session_state.history_period_value),
@@ -422,7 +414,7 @@ def render_history_tab(
         end_date = latest
 
     elif period == 'custom':
-        selected_dates = st.date_input(
+        selected_dates = st.sidebar.date_input(
             ui('Диапазон дат', 'Date range', language),
             value=(earliest, latest),
             min_value=earliest,
@@ -573,7 +565,7 @@ def render_history_tab(
             ui('Максимум', 'Maximum', language),
         ],
         [
-            DEEP_BLUE,
+            LIGHT_CORAL,
             STEEL_BLUE,
             SAGE_GREEN,
         ],
@@ -758,52 +750,53 @@ def render_history_tab(
                 )
             )
 
-    # -----------------------------------------------------
-    # Дополнительные почасовые показатели
-    # -----------------------------------------------------
+    if hourly_period is not None:
+        # -----------------------------------------------------
+        # Дополнительные почасовые показатели
+        # -----------------------------------------------------
 
-    try:
-        extra_hourly = load_extra_metrics(
-            'historical_hourly',
-            selected_city_id,
-            HISTORY_HOURLY_EXTRA,
-            start_date=str(hourly_start),
-            end_date=str(hourly_end),
-            timezone=city_timezone,
-        )
-
-    except psycopg.Error as error:
-        st.error(
-            ui(
-                f'Ошибка дополнительных почасовых данных: {error}',
-                f'Additional hourly data loading error: {error}',
-                language,
+        try:
+            extra_hourly = load_extra_metrics(
+                'historical_hourly',
+                selected_city_id,
+                HISTORY_HOURLY_EXTRA,
+                start_date=str(hourly_start),
+                end_date=str(hourly_end),
+                timezone=city_timezone,
             )
-        )
-        extra_hourly = pd.DataFrame()
 
-    if not extra_hourly.empty:
-        st.divider()
-        st.subheader(
-            ui(
-                'Дополнительные почасовые показатели',
-                'Additional hourly metrics',
-                language,
+        except psycopg.Error as error:
+            st.error(
+                ui(
+                    f'Ошибка дополнительных почасовых данных: {error}',
+                    f'Additional hourly data loading error: {error}',
+                    language,
+                )
             )
-        )
+            extra_hourly = pd.DataFrame()
 
-        show_extra_charts(
-            extra_hourly,
-            'weather_time',
-            (
-                'dew_point',
-                'wind_gusts',
-                'cloud_cover',
-                'pressure_msl',
-            ),
-            language,
-            city_timezone,
-        )
+        if not extra_hourly.empty:
+            st.divider()
+            st.subheader(
+                ui(
+                    'Дополнительные почасовые показатели',
+                    'Additional hourly metrics',
+                    language,
+                )
+            )
+
+            show_extra_charts(
+                extra_hourly,
+                'weather_time',
+                (
+                    'dew_point',
+                    'wind_gusts',
+                    'cloud_cover',
+                    'pressure_msl',
+                ),
+                language,
+                city_timezone,
+            )
 
     # -----------------------------------------------------
     # Солнце и Луна

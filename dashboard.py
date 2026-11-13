@@ -1,5 +1,8 @@
 """Аналитический дашборд исторической погоды и прогнозов."""
 
+import base64
+from pathlib import Path
+
 import psycopg
 import streamlit as st
 
@@ -19,7 +22,6 @@ st.set_page_config(
     layout='wide',
 )
 
-
 # ---------------------------------------------------------
 # Настройки интерфейса
 # ---------------------------------------------------------
@@ -38,18 +40,54 @@ title_column, bot_column = st.columns([5, 1], vertical_alignment='center')
 with title_column:
     st.title('🌍 Weather Analytics')
 
+
 with bot_column:
-    st.link_button(
-        'Telegram',
-        'https://t.me/StormyForecastBot',
-        icon=':material/send:',
-        help=(
+    stormy_path = Path(__file__).resolve().parent / 'assets' / 'stormy.png'
+
+    if stormy_path.is_file():
+        # Встраиваем аватарку в ссылку вместе с подписью.
+        stormy_image = base64.b64encode(stormy_path.read_bytes()).decode('ascii')
+
+        bot_title = (
             'Открыть Stormy в Telegram'
             if language == 'ru'
             else 'Open Stormy on Telegram'
-        ),
-        use_container_width=True,
-    )
+        )
+        bot_label = 'Открыть в Telegram ↗' if language == 'ru' else 'Open in Telegram ↗'
+
+        st.markdown(
+            f'''
+            <div style="display:flex;justify-content:center;">
+                <a href="https://t.me/StormyForecastBot"
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   title="{bot_title}"
+                   aria-label="{bot_title}"
+                   style="display:flex;flex-direction:column;
+                          align-items:center;gap:5px;
+                          text-decoration:none;text-align:center;">
+                    <img src="data:image/png;base64,{stormy_image}"
+                         alt="Stormy"
+                         style="width:76px;height:76px;
+                                border-radius:50%;object-fit:cover;
+                                border:2px solid #4682B4;">
+                    <span style="color:#4682B4;font-size:12px;
+                                 font-weight:600;white-space:nowrap;">
+                        {bot_label}
+                    </span>
+                </a>
+            </div>
+            ''',
+            unsafe_allow_html=True,
+        )
+    else:
+        st.link_button(
+            'Telegram',
+            'https://t.me/StormyForecastBot',
+            icon=':material/send:',
+            use_container_width=True,
+        )
+
 
 st.caption(translate('subtitle', language))
 
@@ -62,7 +100,6 @@ except psycopg.Error as error:
 if cities.empty:
     st.info(translate('no_data', language))
     st.stop()
-
 
 # Сопоставляем идентификаторы городов с отображаемыми названиями.
 # Идентификатор не зависит от языка интерфейса.
@@ -119,7 +156,6 @@ city_label = city_name(
 st.subheader(city_label)
 st.caption(f'{translate("timezone", language)}: {city_timezone}')
 
-
 # ---------------------------------------------------------
 # Вкладки дашборда
 # ---------------------------------------------------------
@@ -153,7 +189,6 @@ with forecast_tab:
         city_timezone=city_timezone,
         language=language,
     )
-
 
 # =========================================================
 # Вкладка 3. Сравнение городов
