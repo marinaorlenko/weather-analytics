@@ -1,5 +1,7 @@
 """Интерфейс сравнения исторической погоды двух городов."""
 
+from html import escape
+
 import altair as alt
 import pandas as pd
 import psycopg
@@ -544,6 +546,120 @@ def prepare_metric_chart_data(
     return chart_data, detail
 
 
+def show_comparison_legend(
+    first_label: str,
+    second_label: str,
+    chart_type: str,
+) -> None:
+    """Показывает обозначения городов с учётом типа графика."""
+    if chart_type == 'bar':
+        first_style = (
+            f'background:{STEEL_BLUE};width:24px;height:12px;border-radius:2px;'
+        )
+        second_style = (
+            f'background:{SAGE_GREEN};width:24px;height:12px;border-radius:2px;'
+        )
+    else:
+        first_style = f'border-top:3px solid {STEEL_BLUE};width:32px;height:0;'
+        second_style = f'border-top:3px dashed {SAGE_GREEN};width:32px;height:0;'
+
+    items = (
+        (first_label, first_style),
+        (second_label, second_style),
+    )
+
+    legend = ''.join(
+        '<span style="display:inline-flex;align-items:center;gap:8px;">'
+        f'<span style="{style}"></span>'
+        f'{escape(label)}'
+        '</span>'
+        for label, style in items
+    )
+
+    st.markdown(
+        '<div style="display:flex;flex-wrap:wrap;'
+        'align-items:center;gap:24px;margin:8px 0 14px;">'
+        f'{legend}</div>',
+        unsafe_allow_html=True,
+    )
+
+
+def get_comparison_aggregation_label(
+    metric: str,
+    detail: str,
+    language: str,
+) -> str:
+    """Объясняет способ агрегации показателя на графике."""
+    detail_labels = {
+        'daily': ('По дням', 'Daily'),
+        'weekly': ('По неделям', 'Weekly'),
+        'monthly': ('По месяцам', 'Monthly'),
+        'yearly': ('По годам', 'Yearly'),
+    }
+
+    period_label = detail_labels[detail][0 if language == 'ru' else 1]
+
+    aggregation = METRICS[metric]['aggregation']
+
+    if detail == 'daily':
+        explanations = {
+            'average_temperature': (
+                'Средняя температура за сутки',
+                'Average daily temperature',
+            ),
+            'temperature_min': (
+                'Минимальная температура за сутки',
+                'Daily minimum temperature',
+            ),
+            'temperature_max': (
+                'Максимальная температура за сутки',
+                'Daily maximum temperature',
+            ),
+            'precipitation': (
+                'Сумма осадков за сутки',
+                'Daily precipitation total',
+            ),
+            'wind_speed_max': (
+                'Максимальная скорость ветра за сутки',
+                'Daily maximum wind speed',
+            ),
+            'wind_gusts_max': (
+                'Максимальный порыв ветра за сутки',
+                'Daily maximum wind gust',
+            ),
+        }
+
+        explanation = explanations.get(
+            metric,
+            (
+                'Среднесуточное значение',
+                'Daily average',
+            ),
+        )
+
+    elif aggregation == 'sum':
+        explanation = (
+            'Сумма дневных значений за каждый период',
+            'Sum of daily values within each period',
+        )
+
+    elif aggregation == 'max':
+        explanation = (
+            'Максимум дневных значений за каждый период',
+            'Maximum daily value within each period',
+        )
+
+    else:
+        explanation = (
+            'Среднее дневных значений за каждый период',
+            'Average of daily values within each period',
+        )
+
+    description = explanation[0 if language == 'ru' else 1]
+
+    return f'{period_label} · {description}'
+
+
 def show_metric_comparison(
     comparison: pd.DataFrame,
     metric: str,
@@ -551,7 +667,7 @@ def show_metric_comparison(
     second_label: str,
     language: str,
 ) -> None:
-    """Строит график сравнения выбранного погодного показателя."""
+    """Строит сравнение показателя с понятной легендой и агрегацией."""
     settings = METRICS[metric]
 
     chart_data, detail = prepare_metric_chart_data(
@@ -571,36 +687,51 @@ def show_metric_comparison(
         )
         return
 
-    detail_labels = {
-        'daily': ui('По дням', 'Daily', language),
-        'weekly': ui('По неделям', 'Weekly', language),
-        'monthly': ui('По месяцам', 'Monthly', language),
-        'yearly': ui('По годам', 'Yearly', language),
-    }
+    st.caption(
+        get_comparison_aggregation_label(
+            metric,
+            detail,
+            language,
+        )
+    )
 
-    st.caption(detail_labels[detail])
+    chart_type = settings['chart_type']
+
+    show_comparison_legend(
+        first_label,
+        second_label,
+        chart_type,
+    )
 
     label = settings[language]
     unit = settings['unit']
+
+    value_title = ui(
+        'Значение',
+        'Value',
+        language,
+    )
+
+    if unit:
+        value_title = f'{value_title}, {unit}'
 
     color = alt.Color(
         'city:N',
         scale=alt.Scale(
             domain=[first_label, second_label],
-            range=list(CITY_COLORS),
+            range=[STEEL_BLUE, SAGE_GREEN],
         ),
-        legend=alt.Legend(
-            title=None,
-            orient='top',
-            symbolSize=180,
-            labelFontSize=13,
-        ),
+        legend=None,
     )
 
     tooltip = [
         alt.Tooltip(
             'date_label:N',
-            title=ui('Дата / период', 'Date / period', language),
+            title=ui(
+                'Дата / период',
+                'Date / period',
+                language,
+            ),
         ),
         alt.Tooltip(
             'city:N',
@@ -608,14 +739,12 @@ def show_metric_comparison(
         ),
         alt.Tooltip(
             'value:Q',
-            title=f'{label}, {unit}',
+            title=value_title,
             format='.1f',
         ),
     ]
 
-    if settings['chart_type'] == 'bar':
-        # Для коротких периодов показываем дни,
-        # для длинных — предварительно агрегированные интервалы.
+    if chart_type == 'bar':
         period_count = chart_data['date_label'].nunique()
 
         chart = (
@@ -624,13 +753,17 @@ def show_metric_comparison(
             .encode(
                 x=alt.X(
                     'date_label:N',
-                    title=ui('Период', 'Period', language),
+                    title=ui(
+                        'Период',
+                        'Period',
+                        language,
+                    ),
                     sort=alt.SortField(
                         field='weather_date',
                         order='ascending',
                     ),
                     axis=alt.Axis(
-                        labelAngle=0 if period_count <= 12 else -45,
+                        labelAngle=(0 if period_count <= 12 else -45),
                         labelOverlap=True,
                     ),
                 ),
@@ -653,6 +786,7 @@ def show_metric_comparison(
             chart_data,
             'weather_date',
         )
+
         date_format = get_date_format(
             chart_data,
             'weather_date',
@@ -667,7 +801,11 @@ def show_metric_comparison(
             .encode(
                 x=alt.X(
                     'weather_date:T',
-                    title=ui('Дата', 'Date', language),
+                    title=ui(
+                        'Дата',
+                        'Date',
+                        language,
+                    ),
                     axis=alt.Axis(
                         values=ticks,
                         format=date_format,
