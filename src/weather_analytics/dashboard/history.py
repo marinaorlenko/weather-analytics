@@ -650,7 +650,6 @@ def render_history_tab(
     )
 
     show_wind_compass(
-        # history,
         daily,
         language,
         date_column='weather_date',
@@ -676,8 +675,6 @@ def render_history_tab(
     st.divider()
 
     hourly_period = select_hourly_period(
-        # start_date,
-        # end_date,
         earliest,
         latest,
         language,
@@ -808,7 +805,6 @@ def render_history_tab(
     st.divider()
 
     show_sun_and_moon(
-        # history,
         daily,
         city_timezone,
         language,

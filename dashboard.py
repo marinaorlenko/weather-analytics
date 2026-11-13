@@ -13,7 +13,7 @@ from weather_analytics.dashboard.history import render_history_tab
 from weather_analytics.localization import city_name, translate
 
 # ---------------------------------------------------------
-# Настройки страницы и палитра
+# Настройки страницы
 # ---------------------------------------------------------
 
 st.set_page_config(
@@ -34,18 +34,22 @@ selected_language = st.sidebar.selectbox(
 
 language = 'ru' if selected_language == 'Русский' else 'en'
 
-# Заголовок и переход в Telegram-бота.
-title_column, bot_column = st.columns([5, 1], vertical_alignment='center')
+# ---------------------------------------------------------
+# Заголовок и Telegram-бот
+# ---------------------------------------------------------
+
+title_column, bot_column = st.columns(
+    [5, 1],
+    vertical_alignment='center',
+)
 
 with title_column:
     st.title('🌍 Weather Analytics')
-
 
 with bot_column:
     stormy_path = Path(__file__).resolve().parent / 'assets' / 'stormy.png'
 
     if stormy_path.is_file():
-        # Встраиваем аватарку в ссылку вместе с подписью.
         stormy_image = base64.b64encode(stormy_path.read_bytes()).decode('ascii')
 
         bot_title = (
@@ -88,8 +92,11 @@ with bot_column:
             use_container_width=True,
         )
 
-
 st.caption(translate('subtitle', language))
+
+# ---------------------------------------------------------
+# Загрузка городов
+# ---------------------------------------------------------
 
 try:
     cities = load_cities()
@@ -101,8 +108,6 @@ if cities.empty:
     st.info(translate('no_data', language))
     st.stop()
 
-# Сопоставляем идентификаторы городов с отображаемыми названиями.
-# Идентификатор не зависит от языка интерфейса.
 city_records = {
     int(row.city_id): {
         'name': row.name,
@@ -121,8 +126,10 @@ city_ids = sorted(
     ),
 )
 
-# При смене языка пересоздаём отображение списка городов.
-# Выбранный city_id сохраняется независимо от языка.
+# ---------------------------------------------------------
+# Выбор города
+# ---------------------------------------------------------
+
 if 'current_city_id' not in st.session_state:
     st.session_state.current_city_id = city_ids[0]
 
@@ -157,46 +164,47 @@ st.subheader(city_label)
 st.caption(f'{translate("timezone", language)}: {city_timezone}')
 
 # ---------------------------------------------------------
-# Вкладки дашборда
+# Переключатель разделов
 # ---------------------------------------------------------
 
-history_tab, forecast_tab, comparison_tab = st.tabs(
-    [
-        translate('history_tab', language),
-        translate('forecast_tab', language),
-        translate('compare_tab', language),
-    ]
+page_options = {
+    'history': translate('history_tab', language),
+    'forecast': translate('forecast_tab', language),
+    'comparison': translate('compare_tab', language),
+}
+
+selected_page = st.segmented_control(
+    ui_label := ('Раздел' if language == 'ru' else 'Section'),
+    options=list(page_options),
+    format_func=lambda page: page_options[page],
+    default='history',
+    selection_mode='single',
+    key='dashboard_page',
+    label_visibility='collapsed',
 )
 
-# =========================================================
-# Вкладка 1. Историческая погода
-# =========================================================
+# ---------------------------------------------------------
+# Отображаем только активный раздел
+# ---------------------------------------------------------
 
-with history_tab:
+if selected_page == 'history':
     render_history_tab(
         selected_city_id=selected_city_id,
         city_timezone=city_timezone,
         language=language,
     )
 
-# =========================================================
-# Вкладка 2. Прогноз на 7 дней
-# =========================================================
-
-with forecast_tab:
+elif selected_page == 'forecast':
     render_forecast_tab(
         selected_city_id=selected_city_id,
         city_timezone=city_timezone,
         language=language,
     )
 
-# =========================================================
-# Вкладка 3. Сравнение городов
-# =========================================================
-
-render_comparison_tab(
-    comparison_tab=comparison_tab,
-    city_ids=city_ids,
-    city_records=city_records,
-    language=language,
-)
+elif selected_page == 'comparison':
+    render_comparison_tab(
+        comparison_tab=st.container(),
+        city_ids=city_ids,
+        city_records=city_records,
+        language=language,
+    )

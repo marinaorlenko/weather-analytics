@@ -269,6 +269,59 @@ def load_historical_daily_averages(
 
 
 @st.cache_data(ttl=300)
+def load_comparison_hourly_averages(
+    city_id: int,
+    timezone: str,
+) -> pd.DataFrame:
+    """Вычисляет среднесуточные почасовые показатели для сравнения городов."""
+    query = """
+        SELECT
+            (weather_time AT TIME ZONE %s)::date AS weather_date,
+            AVG(humidity) AS humidity,
+            AVG(dew_point) AS dew_point,
+            AVG(cloud_cover) AS cloud_cover,
+            AVG(pressure_msl) AS pressure_msl
+        FROM historical_hourly
+        WHERE city_id = %s
+        GROUP BY 1
+        ORDER BY 1
+    """
+
+    # Агрегируем данные непосредственно в PostgreSQL,
+    # чтобы не передавать всю почасовую историю в Streamlit.
+    # Даты рассчитываются в часовом поясе каждого города.
+    with get_connection() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(query, (timezone, city_id))
+            records = cursor.fetchall()
+
+    columns = [
+        'weather_date',
+        'humidity',
+        'dew_point',
+        'cloud_cover',
+        'pressure_msl',
+    ]
+
+    dataframe = pd.DataFrame(records, columns=columns)
+
+    if dataframe.empty:
+        return dataframe
+
+    dataframe['weather_date'] = pd.to_datetime(dataframe['weather_date'])
+
+    for column in columns[1:]:
+        dataframe[column] = pd.to_numeric(
+            dataframe[column],
+            errors='coerce',
+        )
+
+    # Значения давления возвращаются в исходных единицах БД (гПа).
+    # Преобразование в мм рт. ст. выполняется при отображении.
+    return dataframe
+
+
+@st.cache_data(ttl=300)
 def load_forecast_daily_averages(
     city_id: int,
     timezone: str,
@@ -467,25 +520,38 @@ def load_forecast_hourly_details(
         'pressure_msl',
         'visibility',
     )
+
     # Необязательные поля читаем из JSON-представления строки.
     expressions = ', '.join(
         f"(to_jsonb(t)->>'{field}')::double precision AS {field}" for field in fields
     )
+
     query = f"""
         SELECT t.forecast_time, {expressions}
         FROM forecast_hourly AS t
         WHERE t.city_id = %s AND t.fetched_at = %s
         ORDER BY t.forecast_time
     """
+
     with get_connection() as connection:
         with connection.cursor() as cursor:
             cursor.execute(query, (city_id, fetched_at.to_pydatetime()))
             rows = cursor.fetchall()
+
     result = pd.DataFrame(rows, columns=['forecast_time', *fields])
+
     if not result.empty:
-        result['forecast_time'] = pd.to_datetime(result['forecast_time'], utc=True)
+        result['forecast_time'] = pd.to_datetime(
+            result['forecast_time'],
+            utc=True,
+        )
+
         for field in fields:
-            result[field] = pd.to_numeric(result[field], errors='coerce')
+            result[field] = pd.to_numeric(
+                result[field],
+                errors='coerce',
+            )
+
     return result
 
 
@@ -510,6 +576,7 @@ def load_forecast_precipitation_events(
             OR COALESCE(h.snowfall, 0) > 0)
         ORDER BY h.forecast_time
     """
+
     columns = (
         'forecast_time',
         'precipitation',
@@ -518,11 +585,18 @@ def load_forecast_precipitation_events(
         'snowfall',
         'precipitation_type',
     )
+
     with get_connection() as connection:
         with connection.cursor() as cursor:
             cursor.execute(query, (city_id, fetched_at.to_pydatetime()))
             rows = cursor.fetchall()
+
     result = pd.DataFrame(rows, columns=columns)
+
     if not result.empty:
-        result['forecast_time'] = pd.to_datetime(result['forecast_time'], utc=True)
+        result['forecast_time'] = pd.to_datetime(
+            result['forecast_time'],
+            utc=True,
+        )
+
     return result
